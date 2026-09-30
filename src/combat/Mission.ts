@@ -1,5 +1,6 @@
 import type { Damageable } from "./Damageable";
 export class Mission {
+  constructor(readonly requiredAircraft = 3) {}
   score = 0;
   time = 0;
   destroyed = 0;
@@ -20,7 +21,8 @@ export class Mission {
     if (target.kind === "command") this.command = true;
     this.popup = `+${target.points} ${target.kind === "aircraft" ? "AIRCRAFT" : target.id} DESTROYED`;
     this.popupTime = 3;
-    this.complete = this.radar && this.command && this.aircraft >= 3;
+    this.complete =
+      this.radar && this.command && this.aircraft >= this.requiredAircraft;
   }
   update(dt: number, targets: Damageable[]) {
     if (!this.complete) this.time += dt;

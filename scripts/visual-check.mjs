@@ -23,10 +23,223 @@ const hold = async (key, ms) => {
 try {
   await page.goto("http://localhost:5173/", { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__flightDebug !== undefined);
+  assert.equal((await state()).state, "home");
+  await page.screenshot({ path: "/tmp/spirit-menu.png" });
+  if (process.argv.includes("--fighter"))
+    await page.locator('[data-aircraft="F35"]').click();
+  await page.locator("#start-mission").click();
+  await page.waitForFunction(() => window.__flightDebug.state === "playing");
   await page.waitForTimeout(1500);
   assert.equal((await state()).crashed, false);
   await page.screenshot({ path: "/tmp/spirit-initial.png" });
-  if (process.argv.includes("--combat")) {
+  if (process.argv.includes("--fighter")) {
+    assert.equal((await state()).aircraft, "F35");
+    assert.equal((await state()).combat.targets.length, 6);
+    await hold("d", 700);
+    assert.ok((await state()).roll < -0.7, "Fighter banks rapidly");
+    await page.keyboard.press("r");
+    await hold("s", 700);
+    assert.ok((await state()).pitch > 0.35, "Fighter pitches rapidly");
+    await page.keyboard.press("r");
+    await hold("Shift", 1000);
+    assert.ok((await state()).speed > 330, "Fighter accelerates");
+    await page.keyboard.press("r");
+    await page.keyboard.press("Escape");
+    const frozen = await state();
+    await page.keyboard.press("f");
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(200);
+    assert.deepEqual((await state()).position, frozen.position);
+    assert.equal((await state()).combat.missiles, 6);
+    await page.locator("#resume").click();
+    await page.keyboard.press("f");
+    assert.equal(
+      (await state()).combat.missiles,
+      6,
+      "No missile expended without lock",
+    );
+    await page.keyboard.press("r");
+    await page.mouse.move(700, 480);
+    await page.mouse.down();
+    await page.waitForTimeout(1400);
+    await page.mouse.up();
+    const cannon = await state();
+    assert.ok(cannon.combat.cannon < 360);
+    assert.ok(
+      cannon.combat.targets.some(
+        (t) => t.id.startsWith("BANDIT") && t.health < 100,
+      ),
+      "Cannon damages moving enemy",
+    );
+    await page.keyboard.press("g");
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1000);
+    await page.keyboard.press("g");
+    await page.keyboard.press("Space");
+    assert.equal((await state()).combat.bombs, 2);
+    const started = Date.now();
+    let currentTarget = null;
+    let lastShot = 0;
+    let yawKey = null;
+    let pitchKey = null;
+    const setKey = async (previous, next) => {
+      if (previous !== next) {
+        if (previous) await page.keyboard.up(previous);
+        if (next) await page.keyboard.down(next);
+      }
+      return next;
+    };
+    while (
+      !(await state()).combat.mission.complete &&
+      Date.now() - started < 100000
+    ) {
+      const d = await state();
+      assert.equal(d.crashed, false);
+      const alive = d.combat.targets.filter(
+        (t) => t.id.startsWith("BANDIT") && !t.destroyed,
+      );
+      if (!alive.length) {
+        yawKey = await setKey(yawKey, null);
+        pitchKey = await setKey(pitchKey, null);
+        await page.waitForTimeout(100);
+        continue;
+      }
+      if (
+        !d.combat.selected ||
+        !alive.some((t) => t.id === d.combat.selected)
+      ) {
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(50);
+        continue;
+      }
+      const target = alive.find((t) => t.id === d.combat.selected);
+      const [dx, dy, dz] = target.position.map((v, i) => v - d.position[i]);
+      const desiredHeading = (Math.atan2(dx, -dz) * 180) / Math.PI;
+      const difference = ((desiredHeading - d.heading + 540) % 360) - 180;
+      const desiredPitch = Math.atan2(dy, Math.hypot(dx, dz));
+      yawKey = await setKey(
+        yawKey,
+        Math.abs(difference) > 9 ? (difference > 0 ? "e" : "q") : null,
+      );
+      pitchKey = await setKey(
+        pitchKey,
+        Math.abs(desiredPitch - d.pitch) > 0.1
+          ? desiredPitch > d.pitch
+            ? "s"
+            : "w"
+          : null,
+      );
+      if (
+        d.combat.locked &&
+        (currentTarget !== target.id || Date.now() - lastShot > 17000)
+      ) {
+        await page.keyboard.press("f");
+        currentTarget = target.id;
+        lastShot = Date.now();
+      }
+      await page.waitForTimeout(90);
+    }
+    if (yawKey) await page.keyboard.up(yawKey);
+    if (pitchKey) await page.keyboard.up(pitchKey);
+    const completed = await state();
+    console.log(
+      JSON.stringify({
+        fighterResult: completed,
+        cannonDamage: cannon.combat.targets.map((t) => [t.id, t.health]),
+      }),
+    );
+    assert.equal(completed.combat.mission.aircraft, 4);
+    assert.equal(completed.combat.mission.radar, true);
+    assert.equal(completed.combat.mission.command, true);
+    assert.equal(completed.combat.mission.complete, true);
+    await page.locator("#mission-complete").waitFor({ state: "visible" });
+    await page.screenshot({ path: "/tmp/spirit-fighter-complete.png" });
+    await page.locator("#mission-complete .return-home").click();
+    assert.equal((await state()).state, "home");
+    await page.locator('[data-aircraft="B2"]').click();
+    await page.locator("#start-mission").click();
+    await page.waitForFunction(() => window.__flightDebug.state === "playing");
+    assert.equal((await state()).aircraft, "B2");
+    assert.equal((await state()).combat.bombs, 8);
+    assert.equal((await state()).combat.targets.length, 11);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("f");
+    assert.equal(
+      (await state()).combat.missiles,
+      5,
+      "No duplicate controls after switching",
+    );
+    await page.keyboard.press("Escape");
+    await page.locator("#pause-overlay .return-home").click();
+    await page.locator('[data-aircraft="F35"]').click();
+    await page.locator("#start-mission").click();
+    await page.waitForFunction(() => window.__flightDebug.state === "playing");
+    assert.equal((await state()).combat.cannon, 360);
+    assert.equal((await state()).combat.score, 0);
+    assert.equal((await state()).combat.projectiles.length, 0);
+    await page.screenshot({ path: "/tmp/spirit-fighter.png" });
+    assert.deepEqual(errors, []);
+    console.log(
+      "Fighter handling, cannon hits, locks, missile kills, both precision strikes, full mission, menu switching and clean restart passed.",
+    );
+  } else if (process.argv.includes("--lifecycle")) {
+    await page.keyboard.press("Escape");
+    await page.locator("#pause-overlay .return-home").click();
+    const memory = [];
+    for (let i = 0; i < 6; i++) {
+      await page.locator('[data-aircraft="F35"]').click();
+      await page.locator("#start-mission").click();
+      await page.waitForFunction(
+        () => window.__flightDebug.state === "playing",
+      );
+      await page.keyboard.press("Tab");
+      await page.waitForTimeout(700);
+      await page.keyboard.press("f");
+      assert.equal((await state()).combat.missiles, 5);
+      await page.keyboard.press("g");
+      await page.keyboard.press("Space");
+      await page.mouse.move(700, 450);
+      await page.mouse.down();
+      await page.waitForTimeout(150);
+      await page.mouse.up();
+      await page.keyboard.press("h");
+      await page.keyboard.press("Escape");
+      assert.ok(await page.locator("#pause-overlay").isVisible());
+      await page.locator("#pause-overlay .return-home").click();
+      await page.waitForTimeout(150);
+      const d = await state();
+      memory.push([d.geometries, d.textures]);
+      assert.equal(await page.locator(".hud").count(), 0);
+      assert.equal(d.combat, undefined);
+    }
+    assert.deepEqual(
+      memory.at(-1),
+      memory[0],
+      "GPU resources stay stable after repeated missions",
+    );
+    await page.screenshot({ path: "/tmp/spirit-fighter-menu.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: "/tmp/spirit-mobile-menu.png" });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await page.locator("#start-mission").click();
+    await page.waitForFunction(() => window.__flightDebug.state === "playing");
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: "/tmp/spirit-fighter-mobile.png" });
+    assert.deepEqual(errors, []);
+    console.log(
+      JSON.stringify({
+        passed:
+          "Six complete lifecycle cycles with stable GPU counts, single HUD/controls, hidden-HUD pause recovery, responsive menu",
+        memory,
+      }),
+    );
+  } else if (process.argv.includes("--combat")) {
     await page.keyboard.press("r");
     await page.keyboard.press("p");
     const pausedCombat = (await state()).combat;
@@ -143,6 +356,10 @@ try {
       waitUntil: "networkidle",
     });
     await touchPage.waitForFunction(() => window.__flightDebug !== undefined);
+    await touchPage.locator("#start-mission").click();
+    await touchPage.waitForFunction(
+      () => window.__flightDebug.state === "playing",
+    );
     const throttle = touchPage.locator('[data-key="ShiftLeft"]');
     const box = await throttle.boundingBox();
     assert.ok(box);

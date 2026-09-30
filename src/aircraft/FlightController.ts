@@ -3,6 +3,7 @@ import { neutralInput, type FlightInput } from "../physics/FlightModel";
 const controlledKeys = new Set([
   "Space",
   "KeyF",
+  "KeyG",
   "Tab",
   "KeyW",
   "KeyS",
@@ -22,42 +23,56 @@ const controlledKeys = new Set([
   "Escape",
 ]);
 export class FlightController {
+  private readonly lifecycle = new AbortController();
   private readonly keys = new Set<string>();
   private readonly touch = new Set<string>();
   readonly input: FlightInput = neutralInput();
   constructor(onAction: (code: string) => void) {
-    window.addEventListener("keydown", (e) => {
-      if (document.querySelector("dialog[open]")) return;
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLSelectElement
-      )
-        return;
-      if (!controlledKeys.has(e.code)) return;
-      // Keep native browser shortcuts (including reload/new tab) usable.
-      if (
-        e.metaKey ||
-        e.altKey ||
-        (e.ctrlKey &&
-          ![
-            "ControlLeft",
-            "ControlRight",
-            "KeyW",
-            "KeyS",
-            "KeyA",
-            "KeyD",
-            "KeyQ",
-            "KeyE",
-          ].includes(e.code))
-      )
-        return;
-      e.preventDefault();
-      this.keys.add(e.code);
-      if (!e.repeat) onAction(e.code);
+    const signal = this.lifecycle.signal;
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (document.querySelector("dialog[open]")) return;
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLSelectElement
+        )
+          return;
+        if (!controlledKeys.has(e.code)) return;
+        // Keep native browser shortcuts (including reload/new tab) usable.
+        if (
+          e.metaKey ||
+          e.altKey ||
+          (e.ctrlKey &&
+            ![
+              "ControlLeft",
+              "ControlRight",
+              "KeyW",
+              "KeyS",
+              "KeyA",
+              "KeyD",
+              "KeyQ",
+              "KeyE",
+            ].includes(e.code))
+        )
+          return;
+        e.preventDefault();
+        this.keys.add(e.code);
+        if (!e.repeat) onAction(e.code);
+      },
+      { signal },
+    );
+    window.addEventListener("keyup", (e) => this.keys.delete(e.code), {
+      signal,
     });
-    window.addEventListener("keyup", (e) => this.keys.delete(e.code));
-    window.addEventListener("blur", () => this.clear());
-    document.addEventListener("visibilitychange", () => this.clear());
+    window.addEventListener("blur", () => this.clear(), { signal });
+    document.addEventListener("visibilitychange", () => this.clear(), {
+      signal,
+    });
+  }
+  dispose() {
+    this.lifecycle.abort();
+    this.clear();
   }
   clear() {
     this.keys.clear();

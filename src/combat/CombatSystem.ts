@@ -9,18 +9,34 @@ import { TargetManager } from "./TargetManager";
 import { WeaponManager, type CombatSound } from "./WeaponManager";
 export class CombatSystem {
   readonly root = new THREE.Group();
-  readonly enemies = new EnemyManager();
-  readonly compound = new TargetCompound();
+  readonly enemies: EnemyManager;
+  readonly compound: Pick<
+    TargetCompound,
+    "root" | "targets" | "update" | "reset"
+  >;
   readonly effects = new ExplosionSystem();
-  readonly mission = new Mission();
-  readonly targeting = new TargetManager(this.enemies.aircraft);
+  readonly mission: Mission;
+  readonly targeting: TargetManager;
   readonly weapons: WeaponManager;
   private smokeTime = 0;
   constructor(
-    private readonly flight: FlightModel,
-    private readonly sound: (kind: CombatSound) => void,
+    protected readonly flight: FlightModel,
+    protected readonly sound: (kind: CombatSound) => void,
+    options?: {
+      enemies: EnemyManager;
+      compound: CombatSystem["compound"];
+      mission: Mission;
+      targeting?: TargetManager;
+      weapons?: typeof WeaponManager;
+    },
   ) {
-    this.weapons = new WeaponManager(
+    this.enemies = options?.enemies ?? new EnemyManager();
+    this.compound = options?.compound ?? new TargetCompound();
+    this.mission = options?.mission ?? new Mission();
+    this.targeting =
+      options?.targeting ?? new TargetManager(this.enemies.aircraft);
+    const Weapons = options?.weapons ?? WeaponManager;
+    this.weapons = new Weapons(
       this.compound.targets,
       this.enemies.aircraft,
       terrainHeight,
@@ -47,6 +63,11 @@ export class CombatSystem {
         );
       };
     });
+  }
+  setTrigger(_held: boolean) {}
+  dispose() {
+    this.reset();
+    this.effects.dispose();
   }
   action(code: string) {
     if (this.mission.complete || this.flight.crashed) return;

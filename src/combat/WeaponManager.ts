@@ -11,7 +11,7 @@ import type { FlightModel } from "../physics/FlightModel";
 import type { GroundTarget } from "../world/GroundTarget";
 import type { EnemyAircraft } from "../enemies/EnemyAircraft";
 import type { ExplosionSystem } from "./Explosion";
-export type CombatSound = "bomb" | "missile" | "explosion" | "lock";
+export type CombatSound = "bomb" | "missile" | "explosion" | "lock" | "cannon";
 export class WeaponManager {
   readonly root = new THREE.Group();
   readonly projectiles: (Bomb | Missile)[] = [];
@@ -24,11 +24,11 @@ export class WeaponManager {
   private bombCooldown = 0;
   private missileCooldown = 0;
   constructor(
-    private readonly ground: GroundTarget[],
-    private readonly enemies: EnemyAircraft[],
-    private readonly height: HeightSampler,
-    private readonly effects: ExplosionSystem,
-    private readonly sound: (kind: CombatSound) => void,
+    protected readonly ground: GroundTarget[],
+    protected readonly enemies: EnemyAircraft[],
+    protected readonly height: HeightSampler,
+    protected readonly effects: ExplosionSystem,
+    protected readonly sound: (kind: CombatSound) => void,
   ) {}
   drop(flight: FlightModel) {
     this.selected = "BOMB";
@@ -60,7 +60,7 @@ export class WeaponManager {
     this.message = target ? "MISSILE AWAY" : "MISSILE AWAY · UNGUIDED";
     return true;
   }
-  private add(projectile: Bomb | Missile) {
+  protected add(projectile: Bomb | Missile) {
     this.projectiles.push(projectile);
     this.root.add(projectile.root);
   }

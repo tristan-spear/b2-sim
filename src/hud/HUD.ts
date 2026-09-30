@@ -98,6 +98,11 @@ export class HUD {
     this.events.help(true);
     this.helpDialog.showModal();
   }
+  show() {
+    this.hidden = false;
+    this.root.classList.remove("hud-hidden");
+    this.el("show-hud").hidden = true;
+  }
   toggle() {
     this.hidden = !this.hidden;
     this.root.classList.toggle("hud-hidden", this.hidden);

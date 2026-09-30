@@ -6,17 +6,23 @@ export class EngineAudio {
   private gain?: GainNode;
   private oscillator?: OscillatorNode;
   private filter?: BiquadFilterNode;
-  playCombat(kind: "bomb" | "missile" | "explosion" | "lock") {
+  playCombat(kind: "bomb" | "missile" | "explosion" | "lock" | "cannon") {
     if (!this.enabled || !this.context) return;
     const context = this.context,
       now = context.currentTime;
     const gain = context.createGain();
     const duration =
-      kind === "explosion" ? 0.7 : kind === "missile" ? 0.35 : 0.15;
+      kind === "cannon"
+        ? 0.045
+        : kind === "explosion"
+          ? 0.7
+          : kind === "missile"
+            ? 0.35
+            : 0.15;
     gain.gain.setValueAtTime(kind === "explosion" ? 0.12 : 0.045, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     gain.connect(context.destination);
-    if (kind === "explosion" || kind === "missile") {
+    if (kind === "explosion" || kind === "missile" || kind === "cannon") {
       const buffer = context.createBuffer(
         1,
         Math.ceil(context.sampleRate * duration),

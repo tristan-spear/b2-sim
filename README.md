@@ -11,14 +11,16 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite, usually **http://localhost:5173**. Flight starts immediately. The app pauses when the window loses focus.
+Open the URL printed by Vite, usually **http://localhost:5173**. The home screen opens first. Select B–2 Spirit or F–35 Lightning II, then press START. The app pauses when the window loses focus.
 
 ```sh
 npm run build      # Type-check and build into dist/
 npm run preview    # Serve the production build
 npm test           # Flight, terrain, combat, and complete mission tests
 npm run test:browser # Flight regression smoke test; keep the dev server running
-npm run test:combat  # Play an entire combat mission with keyboard input
+npm run test:combat  # Play the preserved B-2 combat mission with keyboard input
+npm run test:fighter # Play the F-35 mission and switch aircraft without refreshing
+npm run test:lifecycle # Repeated mission transitions and GPU resource cleanup
 npm run format     # Format source and tests
 ```
 
@@ -26,21 +28,23 @@ The browser check uses an installed Google Chrome through Playwright. It tests a
 
 ## Controls
 
-| Input                  | Action                                   |
-| ---------------------- | ---------------------------------------- |
-| W / S                  | Pitch down / up                          |
-| A / D                  | Bank left / right                        |
-| Q / E                  | Yaw left / right                         |
-| Shift / Ctrl           | Increase / decrease throttle             |
-| C                      | Cycle Chase → Cinematic → Nose → Orbit   |
-| Space                  | Drop a bomb (8 available)                |
-| F                      | Fire a missile (6 available)             |
-| Tab                    | Cycle enemy aircraft / acquire lock      |
-| R                      | Restart mission, aircraft, targets, ammo |
-| P or Escape            | Pause / resume                           |
-| H                      | Hide / show instruments                  |
-| M                      | Enable / mute engine and combat audio    |
-| Drag / scroll in Orbit | Rotate / zoom around the aircraft        |
+| Input                  | Action                                       |
+| ---------------------- | -------------------------------------------- |
+| W / S                  | Pitch down / up                              |
+| A / D                  | Bank left / right                            |
+| Q / E                  | Yaw left / right                             |
+| Shift / Ctrl           | Increase / decrease throttle                 |
+| C                      | Cycle Chase → Cinematic → Nose → Orbit       |
+| Space                  | B-2: bomb (8); F-35: guided strike (4)       |
+| F                      | Fire a missile (6 available)                 |
+| Tab                    | Cycle enemy aircraft / acquire lock          |
+| G (F-35)               | Cycle designated ground targets              |
+| Left mouse (F-35)      | Hold cannon burst (360 rounds; not in Orbit) |
+| R                      | Restart mission, aircraft, targets, ammo     |
+| P or Escape            | Pause / resume                               |
+| H                      | Hide / show instruments                      |
+| M                      | Enable / mute engine and combat audio        |
+| Drag / scroll in Orbit | Rotate / zoom around the aircraft            |
 
 Buttons support the same camera, pause, sound, and reset actions. Coarse-pointer devices get touch flight controls. Combat buttons also work on touchscreens. The help button contains a complete control reference and render-quality selector.
 
@@ -72,7 +76,25 @@ Scores: aircraft 500, small building 100, hangar 250, radar 300, command 750. Ev
 - `src/world/`: eight damageable structures and a graded training compound with roads.
 - `src/hud/CombatHUD.ts`: projected target brackets, bomb predictor, weapon controls, objectives, and debrief. Text refresh is capped at 10 Hz.
 - `src/utils/Audio.ts`: optional synthesized engine/wind and combat audio, started only after user interaction.
-- `src/main.ts`: composition and render loop, with 120 Hz fixed physics steps.
+- `src/main.ts`: application entry point.
+- `src/game/GameManager.ts`: persistent renderer/world, home/loading/playing states, and session transitions.
+- `src/game/GameSession.ts`: mission lifetime, 120 Hz simulation, pause/restart, input cleanup, HUD, and camera ownership.
+- `src/aircraft/AircraftConfig.ts`: aircraft factories and qualitative stats, flight/camera profiles, default mission IDs.
+- `src/game/MissionManager.ts`: extensible mission registry with aircraft association, briefing, combat and HUD factories.
+- `src/missions/F35TrainingMission.ts`: four active, non-respawning fighter enemies and two designated strike sites; reuses damage, missiles, explosions, score and collision infrastructure.
+- `src/menu/MainMenu.ts`: interactive flight line and original procedural aircraft previews.
+
+## Aircraft and missions
+
+B-2 mission 001 is the original Training Strike: unchanged bomber tuning, eight bombs, six missiles, eight ground structures, three patrolling/respawning aircraft, and the existing instruments/cameras/effects.
+
+F-35 mission 001 is Air Superiority / Strike Training. Destroy four hostile aircraft and both designated ground sites to complete the objective sequence. TAB selects an aircraft; keep it ahead until the lock indicator reads LOCKED, then press F. G selects a ground site and SPACE releases a guided strike. Hold left mouse (or the cannon button) for short-range bursts. Cannon is disabled in Orbit to preserve drag controls. Missiles require a lock and conserve ammo on rejected shots. Enemy AI patrols, chases, maneuvers, and breaks away; mission kills never respawn. Aircraft systems, guidance, and tuning are fictional arcade mechanics.
+
+The fighter uses an original procedural placeholder with swept wings, twin canted fins, canopy, and exhaust. `F35Aircraft.setModel()` accepts a replacement scene with +Y up and -Z forward. No external model fetch or license dependency is introduced.
+
+ESC/P opens Resume, Restart Mission, and Return to Main Menu. Completion and crash panels also allow returning home. Sessions abort global input listeners, dispose OrbitControls and scene resources, clear projectiles/particles/score/locks, and remove HUD/dialog elements. Terrain, sky, clouds, menu scene and the single audio context intentionally persist between missions.
+
+To add a level, register another `MissionDefinition` in `MissionManager` with a unique ID, aircraft association and factories. `forAircraft()` enumerates available missions. Set the aircraft's default mission ID to launch it; a level-selection UI and progression/save system are intentionally deferred. Add an aircraft through its config, model and optional behavior factories; shared systems do not switch on aircraft names.
 
 ### Replace the aircraft
 

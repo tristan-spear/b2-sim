@@ -4,6 +4,24 @@ import type { FlightModel } from "../physics/FlightModel";
 import { damp } from "../utils/math";
 import { terrainHeight } from "../utils/noise";
 
+export interface CameraTuning {
+  distance: number;
+  bank: number;
+  fov: number;
+  speedPullback: number;
+}
+export const bomberCamera: CameraTuning = {
+  distance: 1,
+  bank: 0,
+  fov: 0,
+  speedPullback: 0,
+};
+export const fighterCamera: CameraTuning = {
+  distance: 0.52,
+  bank: 0.2,
+  fov: 7,
+  speedPullback: 0.0007,
+};
 export const cameraNames = ["Chase", "Cinematic", "Nose", "Orbit"] as const;
 export class CameraController {
   readonly camera = new PerspectiveCamera(
@@ -25,7 +43,10 @@ export class CameraController {
   private readonly previousViewRotation = new Quaternion();
   private orbitTransition = 0;
   private readonly euler = new Euler(0, 0, 0, "YXZ");
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    private readonly tuning = bomberCamera,
+  ) {
     this.orbit = new OrbitControls(this.camera, canvas);
     this.orbit.enabled = false;
     this.orbit.enableDamping = true;
@@ -58,7 +79,7 @@ export class CameraController {
       this.euler.set(
         flight.pitch * (this.mode === 2 ? 1 : 0.35),
         flight.yaw,
-        this.mode === 2 ? flight.roll : 0,
+        this.mode === 2 ? flight.roll : flight.roll * this.tuning.bank,
       );
       this.rotation.setFromEuler(this.euler);
       this.offset
@@ -72,7 +93,12 @@ export class CameraController {
               : 105,
         )
         .multiplyScalar(
-          this.mode === 2 ? 1 : Math.max(1, 0.95 / this.camera.aspect),
+          this.mode === 2
+            ? 1
+            : Math.max(1, 0.95 / this.camera.aspect) *
+                this.tuning.distance *
+                (1 +
+                  Math.max(0, flight.speed - 310) * this.tuning.speedPullback),
         )
         .applyQuaternion(this.rotation);
       this.desired.copy(flight.position).add(this.offset);
@@ -110,7 +136,8 @@ export class CameraController {
     this.previousPosition.copy(flight.position);
     const fov =
       (this.mode === 2 ? 64 : this.mode === 1 ? 49 : 47) +
-      (flight.speed - 180) * 0.032;
+      (flight.speed - 180) * 0.032 +
+      this.tuning.fov;
     this.camera.fov = damp(this.camera.fov, fov, 1.5, dt);
     this.camera.updateProjectionMatrix();
   }

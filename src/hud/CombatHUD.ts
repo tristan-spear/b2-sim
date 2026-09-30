@@ -44,7 +44,7 @@ export class CombatHUD {
       this.markers.set(t.id, marker);
     }
   }
-  private el(id: string) {
+  protected el(id: string) {
     return this.elements.get(id)!;
   }
   private place(el: HTMLElement, position: Vector3, camera: PerspectiveCamera) {
@@ -108,7 +108,10 @@ export class CombatHUD {
     );
     this.el("objectives").innerHTML = [
       [m.radar, "Radar destroyed"],
-      [m.aircraft >= 3, `Enemy aircraft ${Math.min(3, m.aircraft)}/3`],
+      [
+        m.aircraft >= m.requiredAircraft,
+        `Enemy aircraft ${Math.min(m.requiredAircraft, m.aircraft)}/${m.requiredAircraft}`,
+      ],
       [m.command, "Command building destroyed"],
     ]
       .map(

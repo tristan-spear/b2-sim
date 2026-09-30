@@ -5,7 +5,7 @@ export class EnemyAircraft extends Damageable {
   readonly root = new THREE.Group();
   readonly previousPosition = new THREE.Vector3();
   readonly radius = 23;
-  private readonly material = new THREE.MeshStandardMaterial({
+  protected readonly material = new THREE.MeshStandardMaterial({
     color: "#6c7c7c",
     roughness: 0.6,
     metalness: 0.3,

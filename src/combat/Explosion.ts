@@ -328,6 +328,14 @@ export class ExplosionSystem {
     while (this.lights.length) this.removeLight(this.lights.length - 1);
     this.shake = 0;
   }
+  dispose() {
+    this.reset();
+    this.pool.forEach((p) => p.mesh.material.dispose());
+    this.pool.length = 0;
+    this.lightPool.length = 0;
+    this.geometry.dispose();
+    this.billowGeometry.dispose();
+  }
   get count() {
     return this.particles.length;
   }
