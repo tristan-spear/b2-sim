@@ -1,0 +1,1387 @@
+:root {
+  font-family: "DM Sans", Arial, sans-serif;
+  color: #f0f1e7;
+  background: #243d3c;
+  font-synthesis: none;
+  --hud: #dce4bd;
+  --subtle: #e2e7d38a;
+  --line: #e0e5ce30;
+  --mono: "IBM Plex Mono", monospace;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+button,
+select {
+  font: inherit;
+}
+button,
+a,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid #e3eab7;
+  outline-offset: 5px;
+}
+button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[hidden] {
+  display: none !important;
+}
+canvas.scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      #0b24283d,
+      transparent 25%,
+      transparent 65%,
+      #0a202953
+    ),
+    radial-gradient(ellipse at 50% 44%, transparent 40%, #16272838 100%);
+  z-index: 1;
+}
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  text-shadow: 0 1px 4px #10222470;
+}
+.hud button,
+.hud a,
+.hud select,
+.hud dialog {
+  pointer-events: auto;
+}
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 107px;
+  margin: 0 38px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-decoration: none;
+  color: #f4f4e9;
+}
+.brand > svg {
+  width: 48px;
+  height: 33px;
+}
+.brand > div {
+  font-size: 25px;
+  letter-spacing: 7px;
+  font-weight: 500;
+  line-height: 1;
+}
+.brand small {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 3.25px;
+  margin-top: 10px;
+  font-weight: 500;
+}
+.session {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 40px;
+}
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 100%;
+  background: #dae5ac;
+  display: inline-block;
+  box-shadow: 0 0 8px #d3e5a32e;
+  flex-shrink: 0;
+}
+.live-dot.caution {
+  background: #f0af7d;
+}
+.session-divider {
+  height: 14px;
+  width: 1px;
+  background: var(--line);
+  margin: 0 12px;
+}
+.sun-symbol {
+  font-size: 19px;
+  margin-left: 8px;
+  vertical-align: -2px;
+  color: #efd0a2;
+}
+.toolbar {
+  display: flex;
+  gap: 9px;
+}
+.icon-button {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.icon-button:hover {
+  background: #e5ead312;
+  border-color: #e5ead330;
+}
+.icon-button.muted {
+  opacity: 0.5;
+}
+.icon-button[aria-pressed="true"] {
+  background: #e5ead31a;
+}
+.location {
+  position: absolute;
+  top: 140px;
+  left: 40px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 1.8px;
+  color: var(--hud);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.tiny-cross {
+  font-size: 17px;
+  font-weight: 400;
+  margin-right: 4px;
+}
+.location p {
+  font-size: 20px;
+  letter-spacing: -0.4px;
+  margin: 9px 0 10px;
+  font-weight: 400;
+}
+.location > span {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  opacity: 0.55;
+}
+.location > span b {
+  font-weight: 400;
+  padding: 0 9px;
+}
+.flight-status {
+  position: absolute;
+  right: 40px;
+  top: 146px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.flight-status small {
+  font-size: 8px;
+  opacity: 0.45;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  margin-left: 6px;
+}
+.compass {
+  position: absolute;
+  left: 50%;
+  top: 133px;
+  transform: translateX(-50%);
+  width: 360px;
+  text-align: center;
+  color: var(--hud);
+  font-family: var(--mono);
+}
+.compass-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.compass-heading b {
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 3px;
+}
+.compass-heading > span {
+  opacity: 0.6;
+}
+.compass-window {
+  height: 45px;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 20%,
+    #000 80%,
+    transparent
+  );
+}
+#compass-track {
+  position: relative;
+  height: 42px;
+}
+#compass-track > span {
+  position: absolute;
+  top: 12px;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: #e3e6c79c;
+}
+#compass-track i {
+  display: block;
+  height: 6px;
+  width: 1px;
+  background: #dce4bd77;
+  margin: 0 auto 7px;
+}
+#compass-track .cardinal {
+  font-weight: 500;
+  color: #edf2ca;
+}
+#compass-track .cardinal i {
+  height: 9px;
+  margin-bottom: 4px;
+}
+.compass-pointer {
+  position: absolute;
+  top: 30px;
+  left: calc(50% - 3px);
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 4px solid var(--hud);
+}
+.flight-instruments {
+  position: absolute;
+  top: 33%;
+  bottom: 31%;
+  left: 0;
+  right: 0;
+  color: var(--hud);
+  font-family: var(--mono);
+}
+.tape {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 120px;
+}
+.speed-tape {
+  left: max(42px, calc(50% - 360px));
+}
+.altitude-tape {
+  right: max(42px, calc(50% - 360px));
+  text-align: right;
+}
+.instrument-label {
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.instrument-label small {
+  font-size: 8px;
+  opacity: 0.5;
+  letter-spacing: 1px;
+}
+.tape-body {
+  height: 180px;
+  position: relative;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.tick-list {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+}
+.tick-list > span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 13px;
+  transform: translateY(-50%);
+  padding-right: 8px;
+}
+.tick-list b {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.55;
+}
+.tick-list i {
+  width: 13px;
+  border-top: 1px solid #dce4bd6e;
+}
+.altitude-tape .tick-list > span {
+  flex-direction: row-reverse;
+  padding: 0 0 0 8px;
+}
+.tape-number {
+  position: absolute;
+  top: 66px;
+  height: 48px;
+  width: 122px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1d303552;
+  border: 1px solid #dfe6be85;
+  font-size: 28px;
+  font-weight: 400;
+  padding: 0 12px;
+  backdrop-filter: blur(5px);
+}
+.tape-number i {
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid var(--hud);
+  border-right: 1px solid var(--hud);
+  transform: rotate(45deg);
+  margin-right: -16px;
+  background: #3d514d;
+}
+.altitude-tape .tape-number i {
+  transform: rotate(-135deg);
+  margin-right: 0;
+  margin-left: -16px;
+}
+.altitude-tape .tape-number {
+  font-size: 24px;
+}
+.tape-caption {
+  font-size: 7px;
+  letter-spacing: 1.4px;
+  opacity: 0.6;
+}
+.aim {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 110px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+}
+.aim-left,
+.aim-right {
+  position: absolute;
+  top: 14px;
+  width: 37px;
+  height: 6px;
+  border-top: 1px solid var(--hud);
+}
+.aim-left {
+  left: 0;
+  border-right: 1px solid var(--hud);
+}
+.aim-right {
+  right: 0;
+  border-left: 1px solid var(--hud);
+}
+.aim-dot {
+  position: absolute;
+  left: 52px;
+  top: 11px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--hud);
+  border-radius: 50%;
+}
+.aim-bottom {
+  position: absolute;
+  left: 54px;
+  top: 25px;
+  height: 5px;
+  border-left: 1px solid var(--hud);
+}
+.pitch-ladder {
+  position: absolute;
+  width: 210px;
+  height: 200px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.28;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+}
+#pitch-ladder-inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+}
+.pitch-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8px;
+  gap: 10px;
+}
+.pitch-line i {
+  width: 43px;
+  border-top: 1px solid var(--hud);
+  height: 4px;
+}
+.pitch-line i:first-of-type {
+  border-right: 1px solid var(--hud);
+}
+.pitch-line i:last-of-type {
+  border-left: 1px solid var(--hud);
+}
+.pitch-line.zero {
+  visibility: hidden;
+}
+.warning {
+  position: absolute;
+  top: 27%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  background: #502f20a8;
+  border: 1px solid #dca57766;
+  color: #ffddb2;
+  padding: 12px 20px;
+  opacity: 0;
+  transition: opacity 0.4s;
+  white-space: nowrap;
+}
+.warning.visible {
+  opacity: 1;
+}
+.aircraft-info {
+  position: absolute;
+  left: 40px;
+  bottom: 109px;
+  width: 294px;
+}
+.aircraft-info h1 {
+  font-family: "Barlow Condensed", Arial, sans-serif;
+  font-size: 49px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  margin: 12px 0 3px;
+  line-height: 1.05;
+}
+.aircraft-subtitle {
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 2.2px;
+  opacity: 0.5;
+}
+.muted-text {
+  opacity: 0.35;
+  margin: 0 4px;
+}
+.engine-row {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+.engine-row > span {
+  opacity: 0.55;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.throttle-track {
+  height: 4px;
+  flex: 1;
+  background: #dce4bd22;
+}
+.throttle-track > div {
+  height: 100%;
+  background: var(--hud);
+  width: 64%;
+  transition: width 0.15s;
+}
+.engine-row b {
+  font-size: 15px;
+  font-weight: 400;
+  min-width: 40px;
+  text-align: right;
+}
+.engine-row b > span {
+  font-size: 9px;
+  opacity: 0.5;
+  margin-left: 4px;
+}
+.aircraft-data {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+}
+.aircraft-data > div > span {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 0.7px;
+  opacity: 0.45;
+  margin-bottom: 7px;
+}
+.aircraft-data b {
+  font-size: 12px;
+  font-weight: 400;
+}
+.aircraft-data small {
+  font-size: 7px;
+  opacity: 0.5;
+}
+.camera-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 111px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.camera-panel > .eyebrow {
+  justify-content: center;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  margin-bottom: 13px;
+}
+.camera-panel .eyebrow kbd {
+  font-size: 8px;
+  padding: 2px 4px;
+  min-width: 16px;
+}
+.camera-switch {
+  display: flex;
+  border: 1px solid #e0e5ce40;
+  background: #243b3b59;
+  padding: 4px;
+  backdrop-filter: blur(16px);
+}
+.camera-switch button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 11px 13px;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 400;
+  color: #e5e8d6a6;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.camera-switch button > span {
+  font: 7px var(--mono);
+  opacity: 0.5;
+}
+.camera-switch button.active {
+  background: #dce4bd;
+  color: #233b37;
+  text-shadow: none;
+}
+.camera-switch button:hover:not(.active) {
+  background: #dce4bd16;
+  color: #f0f4de;
+}
+.camera-panel > p {
+  font-size: 9px;
+  letter-spacing: 0.2px;
+  opacity: 0.45;
+  margin: 12px 0 0;
+}
+.attitude-panel {
+  position: absolute;
+  right: 40px;
+  bottom: 110px;
+  width: 144px;
+}
+.attitude-panel > .eyebrow {
+  justify-content: center;
+  font-size: 8px;
+  margin-bottom: 9px;
+}
+.attitude {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+.attitude svg {
+  width: 100%;
+  height: 100%;
+}
+.outer-ring {
+  fill: none;
+  stroke: #e0e5ce20;
+  stroke-width: 0.6;
+}
+.inner-ring {
+  fill: none;
+  stroke: #e0e5ce3a;
+  stroke-width: 0.7;
+}
+.bank-ticks {
+  stroke: #dce4bd99;
+  stroke-width: 1;
+}
+.horizon-line {
+  stroke: #dce4bd77;
+  stroke-width: 0.8;
+  fill: none;
+}
+.fixed-wing {
+  stroke: #edf0c6;
+  stroke-width: 1.5;
+  fill: none;
+}
+.attitude > span {
+  position: absolute;
+  bottom: 27px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 9px var(--mono);
+  color: var(--hud);
+}
+.attitude-caption {
+  display: flex;
+  justify-content: space-between;
+  font: 7px var(--mono);
+  letter-spacing: 0.7px;
+  opacity: 0.65;
+  margin-top: 9px;
+}
+.controls-bar {
+  position: absolute;
+  bottom: 0;
+  height: 67px;
+  left: 38px;
+  right: 38px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+.control-pair {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+kbd {
+  font: 8px var(--mono);
+  font-weight: 400;
+  border: 1px solid #e0e5ce38;
+  min-width: 21px;
+  height: 21px;
+  padding: 4px;
+  text-align: center;
+  border-radius: 3px;
+  color: #e5e8d2b3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.control-pair > span {
+  font-size: 9px;
+  color: #dfe6cf85;
+  margin-left: 5px;
+}
+#hide-hud {
+  background: none;
+  border: none;
+  font: 10px var(--mono);
+  padding: 0;
+  color: #e5e8d2b3;
+  margin-left: auto;
+}
+#hide-hud > span {
+  font:
+    9px "DM Sans",
+    Arial;
+  margin-left: 7px;
+  opacity: 0.65;
+}
+.footer-tag {
+  font: 7px var(--mono);
+  letter-spacing: 1.6px;
+  opacity: 0.35;
+  margin-left: 15px;
+}
+.touch-controls {
+  display: none;
+}
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  background: #14292c7d;
+  backdrop-filter: blur(9px);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+.pause-card {
+  width: 420px;
+  max-width: 90%;
+  background: #213b3cef;
+  border: 1px solid #dce4bd30;
+  padding: 42px;
+  text-align: center;
+}
+.pause-card .eyebrow {
+  justify-content: center;
+}
+.pause-card h2,
+dialog h2 {
+  font-size: 29px;
+  font-weight: 400;
+  letter-spacing: -0.7px;
+  margin: 18px 0 12px;
+}
+.pause-card p,
+dialog > p {
+  font-size: 12px;
+  line-height: 1.8;
+  opacity: 0.6;
+}
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: #dce4bd;
+  color: #243b37;
+  padding: 15px 18px;
+  margin-top: 26px;
+  font-size: 12px;
+}
+.primary-button:hover {
+  background: #eaf0d0;
+}
+.primary-button > span {
+  font-size: 20px;
+}
+.text-button {
+  display: block;
+  background: none;
+  border: 0;
+  font-size: 10px;
+  opacity: 0.6;
+  margin: 19px auto 0;
+}
+.text-button:hover {
+  opacity: 1;
+}
+dialog {
+  position: fixed;
+  inset: 0;
+  background: #213b3cf7;
+  border: 1px solid #dce4bd40;
+  color: #edf0e0;
+  width: 440px;
+  max-width: calc(100% - 32px);
+  max-height: 90dvh;
+  overflow: auto;
+  padding: 35px;
+  box-shadow: 0 25px 100px #0b161966;
+  text-shadow: none;
+}
+dialog::backdrop {
+  background: #11242880;
+  backdrop-filter: blur(7px);
+}
+.close-button {
+  position: absolute;
+  right: 17px;
+  top: 13px;
+  font-size: 24px;
+  font-weight: 400;
+  background: transparent;
+  border: 0;
+  opacity: 0.6;
+}
+.help-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 13px;
+  align-items: center;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: 23px;
+  font-size: 11px;
+}
+.help-grid > span {
+  opacity: 0.7;
+}
+.help-grid > kbd {
+  justify-self: start;
+}
+.help-tip {
+  font-size: 10px !important;
+  line-height: 1.9 !important;
+  margin-top: 20px;
+}
+.quality-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  margin-top: 20px;
+  gap: 15px;
+}
+.quality-label select {
+  background: #152c2f;
+  border: 1px solid #dce4bd40;
+  color: #dce4bd;
+  font-size: 10px;
+  padding: 8px;
+  max-width: 210px;
+}
+#show-hud {
+  position: absolute;
+  right: 30px;
+  bottom: 25px;
+  padding: 10px 14px;
+  background: #19333365;
+  border: 1px solid var(--line);
+  font-size: 10px;
+  backdrop-filter: blur(10px);
+}
+#show-hud kbd {
+  margin-left: 10px;
+}
+.hud-hidden > *:not(#show-hud):not(.pause-overlay):not(dialog) {
+  opacity: 0;
+  pointer-events: none;
+}
+.hud-hidden > *:not(#show-hud):not(.pause-overlay):not(dialog) button {
+  pointer-events: none;
+}
+.error-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 40px;
+  background: #193638;
+  color: #ecf0d4;
+  text-align: center;
+  z-index: 10;
+}
+.error-screen h1 {
+  font-weight: 400;
+}
+.error-screen p {
+  max-width: 480px;
+  font-size: 14px;
+  line-height: 1.8;
+  opacity: 0.7;
+}
+.error-screen button {
+  padding: 14px;
+  border: 1px solid #dce4bd;
+  background: none;
+  color: inherit;
+  margin-top: 20px;
+}
+@media (min-width: 1600px) {
+  .topbar {
+    height: 120px;
+    margin: 0 52px;
+  }
+  .location {
+    left: 54px;
+    top: 160px;
+  }
+  .flight-status {
+    right: 54px;
+    top: 168px;
+  }
+  .compass {
+    top: 155px;
+  }
+  .aircraft-info {
+    left: 54px;
+    bottom: 125px;
+    width: 315px;
+  }
+  .attitude-panel {
+    right: 54px;
+    bottom: 125px;
+  }
+  .camera-panel {
+    bottom: 125px;
+  }
+  .controls-bar {
+    left: 52px;
+    right: 52px;
+    height: 78px;
+  }
+  .speed-tape {
+    left: calc(50% - 410px);
+  }
+  .altitude-tape {
+    right: calc(50% - 410px);
+  }
+}
+@media (max-width: 1100px) {
+  .session {
+    margin-left: 0;
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .footer-tag {
+    display: none;
+  }
+  .controls-bar {
+    gap: 17px;
+  }
+  .aircraft-info {
+    width: 250px;
+  }
+  .camera-switch button {
+    padding: 10px;
+  }
+  .camera-panel {
+    left: 53%;
+  }
+  .attitude-panel {
+    right: 30px;
+    width: 120px;
+  }
+  .attitude {
+    width: 120px;
+    height: 120px;
+  }
+  .flight-status {
+    font-size: 7px;
+  }
+  .flight-status small {
+    display: none;
+  }
+  .location > span {
+    display: none;
+  }
+  .location p {
+    font-size: 17px;
+  }
+  .compass {
+    width: 300px;
+  }
+  .compass-window {
+    width: 360px;
+    margin-left: -30px;
+  }
+}
+@media (max-width: 800px) {
+  .topbar {
+    height: 83px;
+    margin: 0 22px;
+  }
+  .brand {
+    gap: 10px;
+  }
+  .brand > svg {
+    width: 35px;
+  }
+  .brand > div {
+    font-size: 20px;
+    letter-spacing: 5px;
+  }
+  .brand small {
+    font-size: 6px;
+    letter-spacing: 2px;
+  }
+  .session {
+    display: none;
+  }
+  .toolbar {
+    gap: 2px;
+  }
+  .icon-button {
+    padding: 9px;
+  }
+  .location {
+    top: 106px;
+    left: 24px;
+  }
+  .location p {
+    font-size: 14px;
+  }
+  .location .eyebrow {
+    font-size: 8px;
+  }
+  .flight-status {
+    top: 110px;
+    right: 24px;
+    font-size: 6px;
+  }
+  .compass {
+    top: 153px;
+    width: 230px;
+  }
+  .compass-window {
+    margin-left: -65px;
+    transform: scale(0.8);
+    transform-origin: top;
+  }
+  .compass-heading b {
+    font-size: 17px;
+  }
+  .flight-instruments {
+    top: 31%;
+    bottom: 36%;
+  }
+  .tape {
+    width: 85px;
+  }
+  .speed-tape {
+    left: 25px;
+  }
+  .altitude-tape {
+    right: 25px;
+  }
+  .instrument-label {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .instrument-label small {
+    font-size: 6px;
+  }
+  .tape-number {
+    width: 88px;
+    font-size: 22px;
+    padding: 0 9px;
+    height: 42px;
+    top: 69px;
+  }
+  .altitude-tape .tape-number {
+    font-size: 19px;
+  }
+  .tape-caption {
+    font-size: 6px;
+    letter-spacing: 0.5px;
+  }
+  .tape-number i {
+    margin-right: -13px;
+  }
+  .altitude-tape .tape-number i {
+    margin-left: -13px;
+  }
+  .tick-list b {
+    font-size: 8px;
+  }
+  .aircraft-info {
+    left: 25px;
+    width: 210px;
+    bottom: 145px;
+  }
+  .aircraft-info h1 {
+    font-size: 37px;
+  }
+  .aircraft-info > .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .aircraft-subtitle {
+    font-size: 6px;
+    letter-spacing: 1.5px;
+  }
+  .engine-row {
+    margin-top: 18px;
+  }
+  .aircraft-data {
+    margin-top: 13px;
+    padding-top: 12px;
+    gap: 15px;
+  }
+  .aircraft-data > div > span {
+    font-size: 6px;
+  }
+  .aircraft-data b {
+    font-size: 10px;
+  }
+  .aircraft-data > div:last-child {
+    display: none;
+  }
+  .attitude-panel {
+    bottom: 145px;
+    right: 25px;
+    width: 100px;
+  }
+  .attitude {
+    width: 100px;
+    height: 100px;
+  }
+  .attitude > span {
+    bottom: 19px;
+    font-size: 7px;
+  }
+  .attitude-panel > .eyebrow {
+    font-size: 7px;
+  }
+  .attitude-caption {
+    font-size: 6px;
+  }
+  .camera-panel {
+    bottom: 60px;
+    left: 50%;
+    width: max-content;
+  }
+  .camera-panel > .eyebrow {
+    font-size: 6px;
+    margin-bottom: 9px;
+  }
+  .camera-panel > p {
+    display: none;
+  }
+  .camera-switch button {
+    padding: 9px 16px;
+    font-size: 9px;
+  }
+  .controls-bar {
+    height: 42px;
+    left: 23px;
+    right: 23px;
+    gap: 13px;
+    justify-content: center;
+  }
+  .controls-bar kbd {
+    font-size: 6px;
+    min-width: 16px;
+    height: 17px;
+    padding: 2px;
+  }
+  .control-pair > span {
+    font-size: 7px;
+    margin-left: 2px;
+  }
+  .control-pair {
+    gap: 2px;
+  }
+  .controls-bar .throttle-controls kbd {
+    font-size: 5px;
+  }
+  .controls-bar .control-pair:nth-of-type(6) {
+    display: none;
+  }
+  #hide-hud {
+    display: none;
+  }
+  .warning {
+    font-size: 8px;
+    top: 25%;
+    letter-spacing: 1px;
+  }
+  .pitch-ladder {
+    width: 160px;
+    opacity: 0.2;
+  }
+}
+@media (max-height: 650px) {
+  .topbar {
+    height: 70px;
+  }
+  .location {
+    top: 90px;
+  }
+  .flight-status {
+    top: 93px;
+  }
+  .compass {
+    top: 88px;
+  }
+  .location p {
+    font-size: 15px;
+  }
+  .aircraft-info {
+    bottom: 88px;
+  }
+  .aircraft-info h1 {
+    font-size: 36px;
+  }
+  .aircraft-data {
+    display: none;
+  }
+  .engine-row {
+    margin-top: 13px;
+  }
+  .camera-panel {
+    bottom: 90px;
+  }
+  .attitude-panel {
+    bottom: 90px;
+    width: 100px;
+  }
+  .attitude {
+    width: 100px;
+    height: 100px;
+  }
+  .attitude > span {
+    bottom: 20px;
+    font-size: 7px;
+  }
+  .tape-body {
+    height: 120px;
+  }
+  .tick-list {
+    height: 120px;
+    top: -30px;
+  }
+  .tape-number {
+    top: 36px;
+  }
+  .controls-bar {
+    height: 50px;
+  }
+  .flight-instruments {
+    top: 30%;
+    bottom: 33%;
+  }
+  .location > span {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .touch-controls {
+    display: flex;
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 165px;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .touch-controls > div:first-child {
+    display: grid;
+    grid-template-columns: repeat(3, 38px);
+    gap: 5px;
+  }
+  .touch-controls > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .touch-controls button {
+    touch-action: none;
+    background: #19353875;
+    border: 1px solid #dce4bd50;
+    width: 38px;
+    height: 35px;
+    font-size: 15px;
+    border-radius: 4px;
+  }
+  .touch-controls > div:last-child button {
+    width: 61px;
+    font: 8px var(--mono);
+  }
+  .touch-controls button.pressed {
+    background: #dce4bd;
+    color: #193538;
+  }
+  .aircraft-info {
+    bottom: 290px;
+  }
+  .aircraft-info .aircraft-data,
+  .aircraft-subtitle {
+    display: none;
+  }
+  .attitude-panel {
+    bottom: 275px;
+  }
+  .controls-bar {
+    display: none;
+  }
+  .camera-panel {
+    bottom: 60px;
+  }
+  .location p {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) and (pointer: coarse) {
+  .touch-controls {
+    bottom: 235px;
+  }
+  .aircraft-info {
+    bottom: 142px;
+    width: calc(100% - 50px);
+  }
+  .aircraft-info > .eyebrow {
+    display: none;
+  }
+  .aircraft-info h1 {
+    font-size: 19px;
+    margin: 0 0 6px;
+  }
+  .aircraft-info .engine-row {
+    margin-top: 5px;
+  }
+  .attitude-panel {
+    display: none;
+  }
+  .pitch-line.zero {
+    visibility: visible;
+  }
+}
