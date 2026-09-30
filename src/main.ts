@@ -5,6 +5,8 @@ import { CameraController } from "./camera/CameraController";
 import { Clouds } from "./environment/Clouds";
 import { Sky } from "./environment/Sky";
 import { Terrain } from "./environment/Terrain";
+import { CombatSystem } from "./combat/CombatSystem";
+import { CombatHUD } from "./hud/CombatHUD";
 import { HUD } from "./hud/HUD";
 import { FlightModel } from "./physics/FlightModel";
 import { EngineAudio } from "./utils/Audio";
@@ -45,8 +47,9 @@ function boot() {
     sky = new Sky(scene),
     clouds = new Clouds(),
     cameras = new CameraController(renderer.domElement),
-    audio = new EngineAudio();
-  scene.add(aircraft.root, terrain.root, clouds.mesh);
+    audio = new EngineAudio(),
+    combat = new CombatSystem(flight, (kind) => audio.playCombat(kind));
+  scene.add(aircraft.root, terrain.root, clouds.mesh, combat.root);
   let paused = false,
     helpOpen = false,
     time = 0,
@@ -55,13 +58,14 @@ function boot() {
     fps = 60,
     wasCrashed = false;
   const togglePause = () => {
-    if (flight.crashed || helpOpen) return;
+    if (flight.crashed || helpOpen || combat.mission.complete) return;
     paused = !paused;
     controls.clear();
     hud.setPaused(paused);
   };
   const reset = () => {
     flight.reset();
+    combat.reset();
     paused = false;
     wasCrashed = false;
     accumulator = 0;
@@ -99,7 +103,12 @@ function boot() {
       controls.clear();
     },
   });
+  const combatAction = (code: string) => {
+    if (!paused && !helpOpen && !flight.crashed) combat.action(code);
+  };
+  const combatHUD = new CombatHUD(hud.root, combat, combatAction, reset);
   const controls = new FlightController((code) => {
+    combatAction(code);
     if (code === "KeyC") setCamera((cameras.mode + 1) % 4);
     if (code === "KeyR") reset();
     if (code === "KeyP" || code === "Escape") togglePause();
@@ -142,13 +151,19 @@ function boot() {
     const dt = Math.max(0, Math.min((now - last) / 1000, 0.1));
     last = now;
     if (dt > 0) fps = damp(fps, 1 / Math.max(dt, 0.001), 2, dt);
-    const stopped = paused || helpOpen || flight.crashed;
+    const stopped =
+      paused || helpOpen || flight.crashed || combat.mission.complete;
     if (!stopped) {
       accumulator += dt;
       const input = controls.sample();
       while (accumulator >= 1 / 120) {
         flight.update(1 / 120, input, terrainHeight);
+        if (!flight.crashed) combat.update(1 / 120);
         accumulator -= 1 / 120;
+        if (flight.crashed || combat.mission.complete) {
+          accumulator = 0;
+          break;
+        }
       }
       time += dt;
     } else accumulator = 0;
@@ -169,12 +184,22 @@ function boot() {
       wasCrashed = true;
       hud.setPaused(false, true);
     }
+    // Apply shake only for this render, so camera smoothing never accumulates it.
+    const cameraPosition = cameras.camera.position.clone();
+    if (!stopped) {
+      const shake = combat.effects.shake;
+      cameras.camera.position.x += Math.sin(now * 0.07) * shake;
+      cameras.camera.position.y += Math.cos(now * 0.09) * shake * 0.6;
+    }
+    combatHUD.update(dt, flight, cameras.camera);
     renderer.render(scene, cameras.camera);
+    cameras.camera.position.copy(cameraPosition);
   });
   // Read-only diagnostics for tuning and automated smoke tests.
   if (import.meta.env.DEV)
     Object.defineProperty(window, "__flightDebug", {
       get: () => ({
+        combat: combat.diagnostics,
         position: flight.position.toArray(),
         speed: flight.speed,
         throttle: flight.throttle,

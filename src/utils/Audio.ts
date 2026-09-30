@@ -6,6 +6,54 @@ export class EngineAudio {
   private gain?: GainNode;
   private oscillator?: OscillatorNode;
   private filter?: BiquadFilterNode;
+  playCombat(kind: "bomb" | "missile" | "explosion" | "lock") {
+    if (!this.enabled || !this.context) return;
+    const context = this.context,
+      now = context.currentTime;
+    const gain = context.createGain();
+    const duration =
+      kind === "explosion" ? 0.7 : kind === "missile" ? 0.35 : 0.15;
+    gain.gain.setValueAtTime(kind === "explosion" ? 0.12 : 0.045, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    gain.connect(context.destination);
+    if (kind === "explosion" || kind === "missile") {
+      const buffer = context.createBuffer(
+        1,
+        Math.ceil(context.sampleRate * duration),
+        context.sampleRate,
+      );
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const source = context.createBufferSource(),
+        filter = context.createBiquadFilter();
+      source.buffer = buffer;
+      filter.type = "lowpass";
+      filter.frequency.value = kind === "explosion" ? 300 : 1800;
+      source.connect(filter);
+      filter.connect(gain);
+      source.start();
+      source.onended = () => {
+        source.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      };
+    } else {
+      const source = context.createOscillator();
+      source.type = "sine";
+      source.frequency.setValueAtTime(kind === "lock" ? 880 : 180, now);
+      source.frequency.exponentialRampToValueAtTime(
+        kind === "lock" ? 1320 : 70,
+        now + duration,
+      );
+      source.connect(gain);
+      source.start();
+      source.stop(now + duration);
+      source.onended = () => {
+        source.disconnect();
+        gain.disconnect();
+      };
+    }
+  }
   async toggle() {
     if (!this.context) {
       this.context = new AudioContext();

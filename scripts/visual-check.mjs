@@ -26,7 +26,106 @@ try {
   await page.waitForTimeout(1500);
   assert.equal((await state()).crashed, false);
   await page.screenshot({ path: "/tmp/spirit-initial.png" });
-  if (process.argv.includes("--render-only")) {
+  if (process.argv.includes("--combat")) {
+    await page.keyboard.press("r");
+    await page.keyboard.press("p");
+    const pausedCombat = (await state()).combat;
+    await page.keyboard.press("Space");
+    await page.keyboard.press("f");
+    await page.waitForTimeout(250);
+    assert.deepEqual(
+      (await state()).combat,
+      pausedCombat,
+      "Combat must freeze while paused",
+    );
+    await page.keyboard.press("p");
+    await page.locator("#help").click();
+    await page.keyboard.press("f");
+    assert.equal((await state()).combat.missiles, 6);
+    await page.locator("#ready").click();
+    await page.waitForTimeout(150);
+    await page.keyboard.press("Tab");
+    assert.equal((await state()).combat.locked, true);
+    await page.keyboard.press("f");
+    assert.equal((await state()).combat.missiles, 5);
+    await page.screenshot({ path: "/tmp/spirit-combat-lock.png" });
+    let radarReleased = false,
+      commandReleased = false,
+      shots = 1;
+    const started = Date.now();
+    while (
+      !(await state()).combat.mission.complete &&
+      Date.now() - started < 65000
+    ) {
+      const current = await state();
+      // Normal level-flight release points, based on gravity and building roof altitude.
+      if (!radarReleased && current.position[2] < 1710) {
+        await page.keyboard.press("Space");
+        radarReleased = true;
+      }
+      if (!commandReleased && current.position[2] < 825) {
+        await page.keyboard.press("Space");
+        commandReleased = true;
+      }
+      if (shots < 3 && current.combat.mission.aircraft >= shots) {
+        await page.keyboard.press("Tab");
+        assert.equal((await state()).combat.locked, true);
+        await page.keyboard.press("f");
+        shots++;
+      }
+      await page.waitForTimeout(80);
+    }
+    const completed = await state();
+    assert.equal(completed.combat.mission.radar, true);
+    assert.equal(completed.combat.mission.command, true);
+    assert.equal(completed.combat.mission.aircraft, 3);
+    assert.equal(completed.combat.mission.complete, true);
+    assert.equal(completed.crashed, false);
+    assert.ok(completed.combat.score >= 2550);
+    assert.equal(completed.combat.bombs, 6);
+    assert.equal(completed.combat.missiles, 3);
+    await page.locator("#mission-complete").waitFor({ state: "visible" });
+    assert.ok(await page.locator("#mission-complete").isVisible());
+    assert.match(
+      await page.locator("#mission-results").textContent(),
+      /Final score:.*Targets destroyed:.*Mission time:/,
+    );
+    await page.screenshot({ path: "/tmp/spirit-mission-complete.png" });
+    await page.waitForTimeout(250);
+    assert.equal(
+      (await state()).combat.mission.time,
+      completed.combat.mission.time,
+    );
+    await page.locator("#restart-mission").click();
+    const reset = (await state()).combat;
+    assert.equal(reset.score, 0);
+    assert.equal(reset.bombs, 8);
+    assert.equal(reset.missiles, 6);
+    assert.equal(reset.mission.complete, false);
+    assert.equal(reset.projectiles.length, 0);
+    assert.ok(reset.targets.every((t) => !t.destroyed && t.health > 0));
+    // Restart must also clean active missiles, trails and lock state.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("f");
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(250);
+    await page.keyboard.press("r");
+    const clean = (await state()).combat;
+    assert.equal(clean.projectiles.length, 0);
+    assert.equal(clean.particles, 0);
+    assert.equal(clean.selected, null);
+    assert.equal(clean.bombs, 8);
+    assert.equal(clean.missiles, 6);
+    assert.deepEqual(errors, []);
+    console.log(
+      JSON.stringify({
+        passed:
+          "Keyboard combat mission, pause/help gating, bomb radar/command strikes, 3 moving-aircraft missile kills, HUD objectives, completion freeze, restart and rearm",
+        completed: completed.combat,
+        errors,
+      }),
+    );
+  } else if (process.argv.includes("--render-only")) {
     assert.deepEqual(errors, []);
     console.log(
       JSON.stringify({

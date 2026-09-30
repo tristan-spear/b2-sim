@@ -48,9 +48,16 @@ export function terrainHeight(x: number, z: number) {
   const ridge = 1 - Math.abs(noise(x * 0.00019 + 12, z * 0.00019 - 4));
   const mountains =
     300 + Math.pow(ridge, 2.4) * 1500 + fbm(x * 0.00085, z * 0.00085) * 650;
-  return (
+  const naturalHeight =
     65 +
     valley * Math.max(80, mountains) +
-    fbm(x * 0.0015, z * 0.0015, 3) * 70 * valley
+    fbm(x * 0.0015, z * 0.0015, 3) * 70 * valley;
+  // A small graded training range; smoothly meets the original procedural world.
+  const distanceToRange = Math.max(
+    Math.abs(x - 600) / 450,
+    Math.abs(z + 1800) / 650,
   );
+  const blend = Math.max(0, Math.min(1, (1.45 - distanceToRange) / 0.45));
+  const smooth = blend * blend * (3 - 2 * blend);
+  return lerp(naturalHeight, 1280, smooth);
 }

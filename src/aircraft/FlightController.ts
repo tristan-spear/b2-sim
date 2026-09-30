@@ -1,6 +1,9 @@
 import { neutralInput, type FlightInput } from "../physics/FlightModel";
 
 const controlledKeys = new Set([
+  "Space",
+  "KeyF",
+  "Tab",
   "KeyW",
   "KeyS",
   "KeyA",

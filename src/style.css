@@ -1385,3 +1385,377 @@ dialog::backdrop {
     visibility: visible;
   }
 }
+
+/* Combat extends the existing warm, restrained flight instrumentation. */
+.combat-mode .location {
+  display: none;
+}
+.combat-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--mono);
+  color: var(--hud);
+}
+.mission-panel {
+  position: absolute;
+  left: 38px;
+  top: 138px;
+  width: 275px;
+}
+.mission-panel h2 {
+  font:
+    29px "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 2px;
+  margin: 9px 0 5px;
+}
+.mission-panel p {
+  font:
+    10px "DM Sans",
+    sans-serif;
+  color: var(--subtle);
+  margin: 0 0 15px;
+}
+#mission-clock {
+  float: right;
+}
+#objectives {
+  font-size: 10px;
+  line-height: 2.1;
+}
+#objectives .done {
+  color: #b9e3a3;
+}
+.weapons-panel {
+  position: absolute;
+  top: 192px;
+  right: 38px;
+  width: 245px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  background: #142e3066;
+  backdrop-filter: blur(9px);
+}
+.weapons-panel .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+#combat-score {
+  float: right;
+}
+.weapon-buttons {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0 10px;
+}
+.weapon-buttons button {
+  flex: 1;
+  font: 9px var(--mono);
+  padding: 10px 5px;
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.weapon-buttons button.active {
+  background: #dce4bd20;
+  border-color: #dce4bd80;
+}
+.weapon-buttons kbd {
+  display: block;
+  font-size: 8px;
+  margin: 0 auto 8px;
+  width: fit-content;
+}
+.weapon-buttons b {
+  font-size: 16px;
+  margin-left: 5px;
+}
+#selected-weapon,
+#weapon-message {
+  font-size: 8px;
+  line-height: 1.9;
+}
+#weapon-message {
+  color: #f0c693;
+  min-height: 30px;
+}
+#cycle-target {
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  width: 100%;
+  text-align: left;
+  padding: 12px 0;
+  font: 9px var(--mono);
+}
+#target-info {
+  display: grid;
+  gap: 7px;
+  font-size: 10px;
+}
+#target-info span,
+#target-info small {
+  font-size: 9px;
+  color: var(--subtle);
+}
+#target-info strong {
+  color: #b9e3a3;
+  letter-spacing: 2px;
+  font-size: 10px;
+}
+.world-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  text-align: center;
+  text-shadow: 0 1px 3px #142b2b;
+}
+.world-marker i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 0 auto 7px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+.world-marker span {
+  white-space: nowrap;
+}
+.ground-marker {
+  color: #f5cca2;
+}
+.air-marker {
+  color: #dfddbc;
+}
+.air-marker i {
+  width: 25px;
+  height: 25px;
+  transform: none;
+  border-style: dashed;
+}
+.air-marker.selected {
+  color: #c8ffad;
+  z-index: 1;
+}
+.air-marker.selected i {
+  width: 60px;
+  height: 44px;
+  border: 2px solid currentColor;
+  clip-path: polygon(
+    0 0,
+    25% 0,
+    25% 6%,
+    75% 6%,
+    75% 0,
+    100% 0,
+    100% 25%,
+    96% 25%,
+    96% 75%,
+    100% 75%,
+    100% 100%,
+    75% 100%,
+    75% 94%,
+    25% 94%,
+    25% 100%,
+    0 100%,
+    0 75%,
+    4% 75%,
+    4% 25%,
+    0 25%
+  );
+}
+.world-marker.offscreen i {
+  width: 9px;
+  height: 9px;
+  border-width: 2px 2px 0 0;
+  transform: rotate(-45deg);
+}
+.world-marker.offscreen span::after {
+  content: " / OFFSCREEN";
+  font-size: 6px;
+}
+.bomb-pipper {
+  color: #edf2d1;
+}
+.bomb-pipper i {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transform: none;
+}
+.bomb-pipper.on-target {
+  color: #b9ff99;
+}
+#combat-popup {
+  position: absolute;
+  top: 29%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+#hit-marker {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  font-size: 32px;
+  color: #ffe3b6;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+#hit-marker small {
+  display: block;
+  font-size: 9px;
+}
+.strike-hint {
+  position: absolute;
+  bottom: 194px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  text-align: center;
+  line-height: 2;
+  white-space: nowrap;
+}
+.strike-hint span {
+  font-size: 8px;
+  color: var(--subtle);
+}
+#mission-complete {
+  z-index: 5;
+}
+#mission-complete .pause-card {
+  max-width: 530px;
+}
+@media (max-width: 1100px) {
+  .mission-panel {
+    width: 225px;
+    left: 25px;
+  }
+  .weapons-panel {
+    width: 206px;
+    right: 25px;
+  }
+  .combat-mode .tape {
+    opacity: 0.65;
+  }
+}
+@media (max-width: 800px) {
+  .mission-panel {
+    top: 96px;
+    left: 20px;
+    width: 200px;
+  }
+  .mission-panel h2 {
+    font-size: 21px;
+    margin: 5px 0;
+  }
+  .mission-panel p {
+    display: none;
+  }
+  #objectives {
+    font-size: 8px;
+    line-height: 1.8;
+  }
+  .combat-mode .compass {
+    top: 208px;
+  }
+  .combat-mode .flight-status {
+    display: none;
+  }
+  .weapons-panel {
+    top: auto;
+    bottom: 150px;
+    right: 15px;
+    width: 167px;
+    padding: 10px;
+  }
+  .weapons-panel .eyebrow {
+    font-size: 6px;
+  }
+  .weapon-buttons {
+    margin: 8px 0;
+  }
+  .weapon-buttons button {
+    font-size: 7px;
+    padding: 5px 3px;
+  }
+  #weapon-message {
+    display: none;
+  }
+  #target-info {
+    font-size: 8px;
+  }
+  #target-info span,
+  #target-info small {
+    font-size: 7px;
+  }
+  #cycle-target {
+    font-size: 7px;
+    padding: 8px 0;
+  }
+  .combat-mode .aircraft-info {
+    width: 155px;
+    bottom: 153px;
+  }
+  .combat-mode .aircraft-info h1 {
+    font-size: 26px;
+  }
+  .combat-mode .aircraft-data,
+  .combat-mode .attitude-panel,
+  .combat-mode .aircraft-subtitle {
+    display: none;
+  }
+  .strike-hint {
+    bottom: 113px;
+    font-size: 7px;
+  }
+  .strike-hint span {
+    font-size: 6px;
+  }
+  #combat-popup {
+    top: 29%;
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+  .world-marker {
+    font-size: 7px;
+  }
+}
+@media (pointer: coarse) and (max-width: 800px) {
+  .combat-mode .touch-controls {
+    bottom: 360px;
+  }
+  .combat-mode .aircraft-info {
+    bottom: 170px;
+    width: 140px;
+  }
+}
+@media (max-height: 650px) and (min-width: 801px) {
+  .mission-panel {
+    top: 90px;
+  }
+  .weapons-panel {
+    top: 112px;
+  }
+  .strike-hint {
+    bottom: 160px;
+  }
+}
+.combat-mode .camera-panel > .eyebrow {
+  display: none;
+}
+.world-marker.distant span {
+  display: none;
+}
+.world-marker.distant i {
+  width: 8px;
+  height: 8px;
+  opacity: 0.5;
+}
+@media (min-width: 801px) {
+  .strike-hint {
+    bottom: 218px;
+  }
+}
