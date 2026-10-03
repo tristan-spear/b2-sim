@@ -13,6 +13,9 @@ import type { EngineAudio } from "../utils/Audio";
 import { terrainHeight } from "../utils/noise";
 import { missions } from "./MissionManager";
 import { disposeTree } from "./dispose";
+import { CampaignCombat } from "../campaign/CampaignCombat";
+import { upgradeManager } from "../campaign/UpgradeManager";
+import { save } from "../campaign/SaveManager";
 
 export class GameSession {
   readonly flight: FlightModel;
@@ -20,7 +23,7 @@ export class GameSession {
   readonly combat: CombatSystem;
   readonly cameras: CameraController;
   readonly hud: HUD;
-  readonly combatHUD: CombatHUD;
+  readonly combatHUD: Pick<CombatHUD, "update">;
   readonly controls: FlightController;
   paused = false;
   private helpOpen = false;
@@ -35,13 +38,24 @@ export class GameSession {
     readonly scene: THREE.Scene,
     private readonly audio: EngineAudio,
     home: () => void,
+    missionId = config.mission,
+    navigation?: { upgrades: () => void; next: () => void },
   ) {
-    this.flight = new FlightModel(config.flight);
+    // Validate before allocating models, controls, HUD, or GPU resources.
+    const mission = missions.resolve(missionId, config.id);
+    const profile = mission.campaign
+      ? upgradeManager.profile(
+          config,
+          mission.campaign.bombs,
+          mission.campaign.missiles,
+        )
+      : undefined;
+    this.flight = new FlightModel(
+      profile?.flight ?? config.flight,
+      mission.campaign?.spawn,
+    );
     this.aircraft = config.createModel();
     this.cameras = new CameraController(renderer.domElement, config.camera);
-    const mission = missions.get(config.mission);
-    if (mission.aircraft !== config.id)
-      throw new Error("Aircraft / mission mismatch");
     this.combat = mission.create(this.flight, (kind) => audio.playCombat(kind));
     scene.add(this.aircraft.root, this.combat.root);
     this.hud = new HUD({
@@ -68,6 +82,8 @@ export class GameSession {
       help: (open) => {
         this.helpOpen = open;
         this.clearInput();
+        this.cameras.orbit.enabled = false;
+        if (!this.stopped) this.cameras.setMode(this.cameras.mode, this.flight);
       },
     });
     this.hud.setSound(audio.enabled);
@@ -77,26 +93,38 @@ export class GameSession {
       (code) => this.action(code),
       () => this.reset(),
     );
-    this.controls = new FlightController((code) => {
-      if (code === "Escape" || code === "KeyP") {
-        this.togglePause();
-        return;
-      }
-      if (code === "KeyR") {
-        this.reset();
-        return;
-      }
-      if (this.paused || this.helpOpen) return;
-      this.action(code);
-      if (code === "KeyC") this.setCamera((this.cameras.mode + 1) % 4);
-      if (code === "KeyH") this.hud.toggle();
-      if (code === "KeyM")
-        this.hud.root.querySelector<HTMLButtonElement>("#sound")!.click();
-    });
+    this.controls = new FlightController(
+      (code) => {
+        if (code === "Escape" || code === "KeyP") {
+          this.togglePause();
+          return;
+        }
+        if (code === "KeyR") {
+          this.reset();
+          return;
+        }
+        if (this.paused || this.helpOpen) return;
+        this.action(code);
+        if (code === "KeyC") this.setCamera((this.cameras.mode + 1) % 4);
+        if (code === "KeyH") this.hud.toggle();
+        if (code === "KeyM")
+          this.hud.root.querySelector<HTMLButtonElement>("#sound")!.click();
+      },
+      () => !this.stopped,
+    );
     this.controls.bindTouch(this.hud.root);
+    this.hud.root
+      .querySelectorAll<HTMLButtonElement>(".result-upgrades")
+      .forEach((button) => (button.onclick = navigation?.upgrades ?? home));
+    this.hud.root
+      .querySelectorAll<HTMLButtonElement>(".campaign-home")
+      .forEach((button) => (button.onclick = home));
+    const next =
+      this.hud.root.querySelector<HTMLButtonElement>("#next-mission");
+    if (next) next.onclick = navigation?.next ?? home;
     for (const selector of [
       "#pause-overlay .pause-card",
-      "#mission-complete .pause-card",
+      ...(mission.campaign ? [] : ["#mission-complete .pause-card"]),
     ]) {
       const button = document.createElement("button");
       button.className = "text-button return-home";
@@ -105,6 +133,35 @@ export class GameSession {
       this.hud.root.querySelector(selector)!.append(button);
     }
     const signal = this.lifecycle.signal;
+    // Gameplay uses Tab for targeting; overlays use it for keyboard navigation.
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.code !== "Tab" || this.helpOpen) return;
+        const overlay = this.hud.root.querySelector<HTMLElement>(
+          "#pause-overlay:not([hidden]), #mission-complete:not([hidden]), #campaign-failed:not([hidden])",
+        );
+        if (!overlay) return;
+        const buttons = [
+          ...overlay.querySelectorAll<HTMLButtonElement>(
+            "button:not([hidden])",
+          ),
+        ];
+        const index = buttons.indexOf(
+          document.activeElement as HTMLButtonElement,
+        );
+        event.preventDefault();
+        const next =
+          index < 0
+            ? event.shiftKey
+              ? buttons.length - 1
+              : 0
+            : (index + (event.shiftKey ? -1 : 1) + buttons.length) %
+              buttons.length;
+        buttons[next]?.focus();
+      },
+      { signal },
+    );
     const trigger = (e: PointerEvent) => {
       if (e.button === 0 && !this.stopped && this.cameras.mode !== 3)
         this.combat.setTrigger(true);
@@ -139,6 +196,7 @@ export class GameSession {
       this.paused ||
       this.helpOpen ||
       this.flight.crashed ||
+      (this.combat instanceof CampaignCombat && this.combat.failed) ||
       this.combat.mission.complete
     );
   }
@@ -151,11 +209,21 @@ export class GameSession {
     this.accumulator = 0;
   }
   pause() {
+    if (
+      this.combat.mission.complete ||
+      (this.combat instanceof CampaignCombat && this.combat.failed)
+    )
+      return;
     this.hud.show();
     this.paused = true;
     this.clearInput();
     this.hud.setPaused(true, this.flight.crashed);
     this.cameras.orbit.enabled = false;
+    this.hud.root
+      .querySelector<HTMLButtonElement>(
+        this.flight.crashed ? "#reset" : "#resume",
+      )!
+      .focus();
   }
   togglePause() {
     if (this.helpOpen) return;
@@ -164,6 +232,7 @@ export class GameSession {
       this.clearInput();
       this.hud.setPaused(false, this.flight.crashed);
       this.cameras.setMode(this.cameras.mode, this.flight);
+      this.renderer.domElement.focus();
     } else this.pause();
   }
   reset() {
@@ -173,7 +242,9 @@ export class GameSession {
     this.paused = this.wasCrashed = false;
     this.time = 0;
     this.hud.setPaused(false);
+    this.cameras.setMode(this.cameras.mode, this.flight);
     this.cameras.update(1 / 60, this.flight, true);
+    this.renderer.domElement.focus();
   }
   private setCamera(mode: number) {
     this.combat.setTrigger(false);
@@ -185,10 +256,13 @@ export class GameSession {
       this.accumulator += dt;
       const input = this.controls.sample();
       while (this.accumulator >= 1 / 120) {
-        this.flight.update(1 / 120, input, terrainHeight);
+        if (!(this.combat instanceof CampaignCombat && this.combat.concluding))
+          this.flight.update(1 / 120, input, terrainHeight);
         if (!this.flight.crashed) this.combat.update(1 / 120);
+        else if (this.combat instanceof CampaignCombat)
+          this.combat.fail("Terrain contact. Aircraft lost.");
         this.accumulator -= 1 / 120;
-        if (this.flight.crashed || this.combat.mission.complete) {
+        if (this.stopped) {
           this.clearInput();
           this.hud.show();
           break;
@@ -197,7 +271,39 @@ export class GameSession {
       this.time += dt;
     } else this.accumulator = 0;
     this.aircraft.update(this.flight, this.time);
-    this.cameras.update(dt, this.flight);
+    if (!this.stopped) this.cameras.update(dt, this.flight);
+    else this.cameras.orbit.enabled = false;
+    const cinematic =
+      this.combat instanceof CampaignCombat ? this.combat.cinematic : null;
+    if (cinematic && !this.stopped && this.cameras.mode !== 3) {
+      const camera = this.cameras.camera;
+      const look = camera
+        .getWorldDirection(new THREE.Vector3())
+        .multiplyScalar(1500)
+        .add(camera.position);
+      camera.position.lerp(
+        cinematic.target
+          .clone()
+          .add(
+            new THREE.Vector3(
+              ...((cinematic.large ? [950, 650, 1400] : [120, 65, 180]) as [
+                number,
+                number,
+                number,
+              ]),
+            ),
+          ),
+        cinematic.blend * 0.8,
+      );
+      camera.lookAt(
+        look.lerp(
+          cinematic.target
+            .clone()
+            .add(new THREE.Vector3(0, cinematic.large ? 150 : 0, 0)),
+          cinematic.blend,
+        ),
+      );
+    }
     this.aircraft.root.visible = this.cameras.mode !== 2;
     this.audio.update(this.flight, this.stopped);
     this.hud.update(
@@ -206,11 +312,17 @@ export class GameSession {
       fps,
       now,
     );
-    if (this.flight.crashed && !this.wasCrashed) {
+    if (
+      this.flight.crashed &&
+      !this.wasCrashed &&
+      !(this.combat instanceof CampaignCombat)
+    ) {
       this.wasCrashed = true;
       this.hud.show();
       this.hud.setPaused(false, true);
     }
+    if (this.combat instanceof CampaignCombat && this.combat.result)
+      save.award(this.combat.result);
     this.combatHUD.update(dt, this.flight, this.cameras.camera);
   }
   dispose() {
@@ -241,6 +353,9 @@ export class GameSession {
       crashed: f.crashed,
       paused: this.paused,
       camera: this.cameras.mode,
+      cameraPosition: this.cameras.camera.position.toArray(),
+      predictedImpact: this.combat.weapons.predict(f).toArray(),
+      orbitEnabled: this.cameras.orbit.enabled,
     };
   }
 }

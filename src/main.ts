@@ -4,6 +4,7 @@ import "@fontsource/dm-sans/latin-500.css";
 import "@fontsource/barlow-condensed/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "./style.css";
+import "./hud/campaign.css";
 
 function showError(message: string) {
   const panel = document.createElement("div");

@@ -11,8 +11,47 @@ import type { FlightModel } from "../physics/FlightModel";
 import type { GroundTarget } from "../world/GroundTarget";
 import type { EnemyAircraft } from "../enemies/EnemyAircraft";
 import type { ExplosionSystem } from "./Explosion";
-export type CombatSound = "bomb" | "missile" | "explosion" | "lock" | "cannon";
+export type CombatSound =
+  | "bomb"
+  | "missile"
+  | "explosion"
+  | "lock"
+  | "cannon"
+  | "warning"
+  | "damage"
+  | "enemy"
+  | "boss"
+  | "complete"
+  | "failed";
+export interface WeaponTuning {
+  bombs: number;
+  missiles: number;
+  cannon: number;
+  damage: number;
+  missileDamage: number;
+  cannonDamage: number;
+  blastRadius: number;
+  cooldown: number;
+}
+export const defaultWeapons: WeaponTuning = {
+  bombs: 8,
+  missiles: 6,
+  cannon: 360,
+  damage: 1,
+  missileDamage: 1,
+  cannonDamage: 1,
+  blastRadius: 190,
+  cooldown: 1,
+};
 export class WeaponManager {
+  tuning: WeaponTuning = { ...defaultWeapons };
+  shots = 0;
+  hits = 0;
+  cannonHits = 0;
+  configure(tuning: WeaponTuning) {
+    this.tuning = { ...tuning };
+    this.reset();
+  }
   readonly root = new THREE.Group();
   readonly projectiles: (Bomb | Missile)[] = [];
   bombs = 8;
@@ -39,7 +78,7 @@ export class WeaponManager {
       return false;
     }
     this.bombs--;
-    this.bombCooldown = 0.65;
+    this.bombCooldown = 0.65 * this.tuning.cooldown;
     this.add(new Bomb(flight));
     this.sound("bomb");
     this.message = "BOMB AWAY";
@@ -54,13 +93,14 @@ export class WeaponManager {
       return false;
     }
     this.missiles--;
-    this.missileCooldown = 0.8;
+    this.missileCooldown = 0.8 * this.tuning.cooldown;
     this.add(new Missile(flight, target));
     this.sound("missile");
     this.message = target ? "MISSILE AWAY" : "MISSILE AWAY · UNGUIDED";
     return true;
   }
   protected add(projectile: Bomb | Missile) {
+    this.shots++;
     this.projectiles.push(projectile);
     this.root.add(projectile.root);
   }
@@ -112,17 +152,33 @@ export class WeaponManager {
         this.effects.spawn(impact, p.kind, viewer);
         this.sound("explosion");
         if (p instanceof Bomb) {
+          let damaged = false;
           for (const target of this.ground) {
             if (target.destroyed) continue;
             const distance = target.bounds.distanceToPoint(impact);
-            if (distance < 190) {
-              target.takeDamage(320 * (1 - distance / 190));
-              this.hitTime = 0.35;
+            if (distance < this.tuning.blastRadius) {
+              const before = target.health;
+              target.takeDamage(
+                320 *
+                  this.tuning.damage *
+                  (1 - distance / this.tuning.blastRadius),
+              );
+              if (target.health < before) {
+                damaged = true;
+                this.hitTime = 0.35;
+              }
             }
           }
+          if (damaged) this.hits++;
         } else if (victim) {
-          victim.takeDamage(p.damage);
-          this.hitTime = 0.35;
+          const before = victim.health;
+          victim.takeDamage(
+            p.damage * this.tuning.damage * this.tuning.missileDamage,
+          );
+          if (victim.health < before) {
+            this.hits++;
+            this.hitTime = 0.35;
+          }
         }
         this.remove(i);
       } else if (p.age >= p.lifetime) this.remove(i);
@@ -152,8 +208,9 @@ export class WeaponManager {
   }
   reset() {
     while (this.projectiles.length) this.remove(0);
-    this.bombs = 8;
-    this.missiles = 6;
+    this.bombs = this.tuning.bombs;
+    this.missiles = this.tuning.missiles;
+    this.shots = this.hits = this.cannonHits = 0;
     this.bombCooldown = this.missileCooldown = this.hitTime = 0;
     this.selected = "BOMB";
     this.message = "TAB TO SELECT AN AIR TARGET";

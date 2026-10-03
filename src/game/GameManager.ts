@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { nextCampaignMission } from "../campaign/catalog";
 import { aircraftConfigs, type AircraftType } from "../aircraft/AircraftConfig";
 import { MainMenu } from "../menu/MainMenu";
 import { GameSession } from "./GameSession";
@@ -7,8 +8,13 @@ import { Sky } from "../environment/Sky";
 import { Clouds } from "../environment/Clouds";
 import { EngineAudio } from "../utils/Audio";
 import { damp } from "../utils/math";
+import { missions } from "./MissionManager";
+import { save } from "../campaign/SaveManager";
+import { MissionScenery } from "../environment/MissionScenery";
+import { CampaignCombat } from "../campaign/CampaignCombat";
 
-export type GameState = "home" | "loading" | "playing" | "paused" | "complete";
+export type GameState =
+  "home" | "loading" | "playing" | "paused" | "complete" | "failed";
 export class GameManager {
   private readonly renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -23,6 +29,8 @@ export class GameManager {
   private readonly menu: MainMenu;
   private readonly loading = document.createElement("div");
   private session?: GameSession;
+  private scenery?: MissionScenery;
+  private missionId = "";
   private phase: "home" | "loading" | "playing" = "home";
   private last = 0;
   private fps = 60;
@@ -47,7 +55,9 @@ export class GameManager {
     vignette.className = "vignette";
     app.append(vignette);
     this.scene.add(this.terrain.root, this.clouds.mesh);
-    this.menu = new MainMenu((type) => void this.start(type));
+    this.menu = new MainMenu(
+      (type, missionId) => void this.start(type, missionId),
+    );
     this.loading.className = "loading-screen";
     this.loading.hidden = true;
     this.loading.innerHTML =
@@ -73,6 +83,10 @@ export class GameManager {
         get: () => ({
           state: this.state,
           selected: this.menu.selected,
+          missionId: this.missionId,
+          environment: missions
+            .forAircraft(this.menu.selected)
+            .find((m) => m.id === this.missionId)?.campaign?.environment,
           ...this.session?.diagnostics,
           tiles: this.terrain.tileCount,
           drawCalls: r.info.render.calls,
@@ -85,25 +99,62 @@ export class GameManager {
   get state(): GameState {
     return this.phase !== "playing"
       ? this.phase
-      : this.session?.paused
-        ? "paused"
-        : this.session?.combat.mission.complete
-          ? "complete"
-          : "playing";
+      : this.session?.combat instanceof CampaignCombat &&
+          this.session.combat.failed
+        ? "failed"
+        : this.session?.paused
+          ? "paused"
+          : this.session?.combat.mission.complete
+            ? "complete"
+            : "playing";
   }
-  private async start(type: AircraftType) {
+  private async start(type: AircraftType, missionId: string) {
     if (this.phase !== "home") return;
+    const definition = missions.resolve(missionId, type);
+    if (
+      definition.campaign &&
+      !save.unlocked(definition.campaign.prerequisite)
+    ) {
+      this.menu.showError(
+        "Complete the previous mission to unlock this operation.",
+      );
+      return;
+    }
     this.phase = "loading";
+    this.menu.showError("");
+    this.menu.root.inert = true;
     this.menu.root.classList.add("leaving");
     this.loading.hidden = false;
     await new Promise((resolve) => setTimeout(resolve, 450));
     try {
+      this.missionId = missionId;
+      if (definition.campaign) {
+        const env = definition.campaign.environment;
+        this.terrain.configure(
+          env.terrain,
+          new THREE.Vector3(...definition.campaign.spawn),
+        );
+        this.sky.configure(env);
+        this.clouds.configure(env);
+        this.scenery = new MissionScenery(env);
+        this.scene.add(this.scenery.root);
+      } else
+        this.terrain.configure("legacy", new THREE.Vector3(600, 2400, 4200));
       this.session = new GameSession(
         aircraftConfigs[type],
         this.renderer,
         this.scene,
         this.audio,
         () => this.home(),
+        missionId,
+        {
+          upgrades: () => this.home("loadout", missionId),
+          next: () =>
+            this.home(
+              "loadout",
+              nextCampaignMission(missionId)?.id ?? missionId,
+            ),
+        },
       );
       this.sky.update(this.session.flight.position);
       this.terrain.update(this.session.flight.position);
@@ -114,21 +165,31 @@ export class GameManager {
       this.renderer.domElement.focus();
     } catch (error) {
       console.error(error);
+      this.session?.dispose();
+      this.session = undefined;
+      this.scenery?.dispose();
+      this.scenery = undefined;
       this.phase = "home";
-      this.menu.show();
-      this.loading.textContent =
-        "Mission could not load. Reload and try again.";
-      return;
+      this.menu.showError(
+        "Mission could not load. Select an aircraft and try again.",
+      );
+    } finally {
+      this.menu.root.inert = false;
+      this.loading.hidden = true;
+      if (this.phase === "home") this.menu.show();
     }
-    this.loading.hidden = true;
   }
-  private home() {
+  private home(stage: "home" | "loadout" = "home", missionId = this.missionId) {
     this.session?.dispose();
     this.session = undefined;
+    this.scenery?.dispose();
+    this.scenery = undefined;
     this.renderer.domElement.classList.remove("mission-enter");
     this.renderer.renderLists.dispose();
     this.phase = "home";
     this.menu.show();
+    if (stage === "loadout")
+      this.menu.campaign.show(this.menu.selected, "loadout", missionId);
     this.last = performance.now();
   }
   private frame(now: number) {
@@ -141,6 +202,7 @@ export class GameManager {
     if (this.phase === "playing" && s) {
       s.update(dt, this.fps, now);
       if (!s.stopped) this.time += dt;
+      this.scenery?.update(s.stopped ? 0 : dt, s.flight.position, this.time);
       this.sky.update(s.flight.position);
       this.terrain.update(s.flight.position);
       this.clouds.update(s.cameras.camera, s.flight.position, this.time);

@@ -6,6 +6,8 @@ import {
 } from "../aircraft/AircraftConfig";
 import { missions } from "../game/MissionManager";
 import { disposeTree } from "../game/dispose";
+import { CampaignMenu } from "./CampaignMenu";
+import { save } from "../campaign/SaveManager";
 
 export class MainMenu {
   readonly root = document.createElement("main");
@@ -16,10 +18,12 @@ export class MainMenu {
     0.1,
     500,
   );
-  selected: AircraftType = "B2";
+  selected: AircraftType = save.data.selectedAircraft;
+  readonly campaign: CampaignMenu;
+  selectedMission = aircraftConfigs.B2.mission;
   private aircraft?: AircraftVisual;
   private time = 0;
-  constructor(start: (type: AircraftType) => void) {
+  constructor(start: (type: AircraftType, missionId: string) => void) {
     this.root.className = "main-menu";
     this.root.innerHTML = `
       <header class="menu-header"><a class="menu-brand" href="#">✦ &nbsp; SPIRIT<span>FLIGHT OPERATIONS</span></a><span class="menu-status"><i></i> SIERRA RANGE · ONLINE</span><span class="menu-version">PROTOTYPE / 02</span></header>
@@ -33,7 +37,7 @@ export class MainMenu {
             `<button class="aircraft-card" data-aircraft="${a.id}" aria-pressed="${a.id === this.selected}"><div class="card-top"><span>AV–00${index + 1} / ${a.role}</span><b class="selection-indicator">${a.id === this.selected ? "✓ SELECTED" : "SELECT ↗"}</b></div><h2>${a.name}</h2><div class="aircraft-stats">${["SPEED", "AGILITY", "STRIKE", "AIR COMBAT"].map((label, i) => `<div><span>${label}</span><b>${a.stats[i]}</b></div>`).join("")}</div></button>`,
         )
         .join("")}</div></div>
-      <div class="launch-panel"><div class="menu-section-label">02 <span>MISSION / 001</span></div><h2 id="brief-title"></h2><p id="brief-description"></p><button id="start-mission" class="start-button">START <span>→</span></button></div></section>
+      <div class="launch-panel"><div class="menu-section-label">02 <span id="mission-number">MISSION / 001</span></div><label class="mission-choice" hidden>MISSION<select id="mission-select"></select></label><h2 id="brief-title"></h2><p id="brief-description"></p><p id="launch-error" role="alert" hidden></p><button id="start-mission" class="start-button">START <span>→</span></button></div></section>
       <footer class="menu-footer"><span>FICTIONAL TRAINING EXERCISES</span><span>W A S D · FLIGHT &nbsp; / &nbsp; ESC · PAUSE & SETTINGS</span><span>BUILT TO DISAPPEAR.</span></footer>`;
     document.querySelector("#app")!.append(this.root);
     this.root.querySelector<HTMLAnchorElement>(".menu-brand")!.onclick = (e) =>
@@ -44,8 +48,22 @@ export class MainMenu {
         button.onclick = () =>
           this.select(button.dataset.aircraft as AircraftType);
       });
+    this.campaign = new CampaignMenu(this.root, start);
+    this.root.querySelector<HTMLButtonElement>("#start-mission")!.textContent =
+      "SELECT MISSION →";
     this.root.querySelector<HTMLButtonElement>("#start-mission")!.onclick =
-      () => start(this.selected);
+      () => {
+        // Development-only route keeps the original simulators available to regression tests.
+        if (
+          import.meta.env.DEV &&
+          new URLSearchParams(location.search).has("training")
+        )
+          start(this.selected, `${this.selected.toLowerCase()}-training`);
+        else this.campaign.show(this.selected);
+      };
+    this.root.querySelector<HTMLSelectElement>("#mission-select")!.onchange = (
+      event,
+    ) => this.selectMission((event.target as HTMLSelectElement).value);
     this.scene.background = new THREE.Color("#101d24");
     this.scene.fog = new THREE.Fog("#101d24", 100, 250);
     this.scene.add(new THREE.HemisphereLight("#cce7ef", "#18212b", 3));
@@ -87,8 +105,8 @@ export class MainMenu {
   }
   select(type: AircraftType) {
     this.selected = type;
-    const config = aircraftConfigs[type],
-      mission = missions.get(config.mission);
+    save.select(type);
+    const config = aircraftConfigs[type];
     if (this.aircraft) disposeTree(this.aircraft.root);
     this.aircraft = config.createModel();
     this.aircraft.root.scale.setScalar(config.previewScale);
@@ -102,13 +120,45 @@ export class MainMenu {
           ? "✓ SELECTED"
           : "SELECT ↗";
       });
+    const aircraft = Object.keys(aircraftConfigs);
     this.root.querySelector("#preview-number")!.textContent =
-      type === "B2" ? "01 / 02" : "02 / 02";
+      `${String(aircraft.indexOf(type) + 1).padStart(2, "0")} / ${String(aircraft.length).padStart(2, "0")}`;
     this.root.querySelector("#preview-name")!.textContent = config.name;
     this.root.querySelector("#preview-tagline")!.textContent = config.tagline;
+    const available = missions.forAircraft(type).filter((m) => m.campaign);
+    const selector =
+      this.root.querySelector<HTMLSelectElement>("#mission-select")!;
+    selector.replaceChildren(
+      ...available.map(
+        (mission, index) =>
+          new Option(
+            `${String(index + 1).padStart(3, "0")} · ${mission.title}`,
+            mission.id,
+          ),
+      ),
+    );
+    this.root.querySelector<HTMLElement>(".mission-choice")!.hidden = true;
+    this.selectMission(config.mission);
+  }
+  private selectMission(id: string) {
+    const mission = missions.resolve(id, this.selected);
+    this.selectedMission = id;
+    this.root.querySelector<HTMLSelectElement>("#mission-select")!.value = id;
+    const index = missions
+      .forAircraft(this.selected)
+      .filter((m) => m.campaign)
+      .findIndex((m) => m.id === id);
+    this.root.querySelector("#mission-number")!.textContent =
+      `MISSION / ${String(index + 1).padStart(3, "0")}`;
     this.root.querySelector("#brief-title")!.textContent = mission.title;
     this.root.querySelector("#brief-description")!.textContent =
       mission.briefing;
+    this.showError("");
+  }
+  showError(message: string) {
+    const error = this.root.querySelector<HTMLElement>("#launch-error")!;
+    error.textContent = message;
+    error.hidden = !message;
   }
   update(dt: number) {
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches)
@@ -125,6 +175,7 @@ export class MainMenu {
     this.camera.updateProjectionMatrix();
   }
   show() {
+    this.campaign.hide();
     this.root.hidden = false;
     this.root.classList.remove("leaving");
     this.root.querySelector<HTMLButtonElement>("#start-mission")!.focus();

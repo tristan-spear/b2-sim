@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { Bomb } from "./Bomb";
-import { WeaponManager } from "./WeaponManager";
+import { WeaponManager, defaultWeapons } from "./WeaponManager";
 import type { FlightModel } from "../physics/FlightModel";
 import type { GroundTarget } from "../world/GroundTarget";
 import { segmentSphere, segmentTerrain } from "./collision";
@@ -37,6 +37,7 @@ type Tracer = {
   age: number;
 };
 export class FighterWeapons extends WeaponManager {
+  override tuning = { ...defaultWeapons, bombs: 4 };
   override bombs = 4;
   override selected = "AIR-TO-AIR";
   override message = "TAB · SELECT AIR TARGET / G · SELECT GROUND TARGET";
@@ -76,7 +77,7 @@ export class FighterWeapons extends WeaponManager {
       return false;
     }
     this.bombs--;
-    this.strikeCooldown = 0.8;
+    this.strikeCooldown = 0.8 * this.tuning.cooldown;
     this.add(new PrecisionWeapon(flight, this.groundTarget));
     this.sound("bomb");
     this.message = "GUIDED STRIKE AWAY";
@@ -100,7 +101,8 @@ export class FighterWeapons extends WeaponManager {
     this.strikeCooldown -= dt;
     this.muzzleTime -= dt;
     if (this.cannonHeld && this.cannonAmmo > 0 && this.cooldown <= 0) {
-      this.cooldown = 0.075;
+      this.cooldown = 0.075 * this.tuning.cooldown;
+      this.shots++;
       this.cannonAmmo--;
       this.selected = "CANNON";
       const mesh = new THREE.Mesh(this.tracerGeometry, this.tracerMaterial);
@@ -159,9 +161,14 @@ export class FighterWeapons extends WeaponManager {
             enemy.radius + 4,
           ) !== null
         ) {
-          enemy.takeDamage(18);
-          this.hitTime = 0.2;
-          this.effects.trail(t.mesh.position);
+          const before = enemy.health;
+          enemy.takeDamage(18 * this.tuning.damage * this.tuning.cannonDamage);
+          if (enemy.health < before) {
+            this.hits++;
+            this.cannonHits++;
+            this.hitTime = 0.2;
+          }
+          this.effects.sparks(t.mesh.position);
           hit = true;
           break;
         }
@@ -178,8 +185,8 @@ export class FighterWeapons extends WeaponManager {
   }
   override reset() {
     super.reset();
-    this.bombs = 4;
-    this.cannonAmmo = 360;
+    this.bombs = this.tuning.bombs;
+    this.cannonAmmo = this.tuning.cannon;
     this.cannonHeld = false;
     this.groundTarget = null;
     this.cooldown = this.strikeCooldown = this.muzzleTime = 0;

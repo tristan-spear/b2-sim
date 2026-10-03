@@ -26,6 +26,7 @@ export interface FlightTuning {
   thrust: number;
   acceleration: number;
   velocityResponse: number;
+  throttleResponse?: number;
 }
 export const bomberFlight: FlightTuning = {
   startSpeed: 210,
@@ -69,13 +70,17 @@ export class FlightModel {
   distance = 0;
   elapsed = 0;
   crashed = false;
+  boost = 1;
   private pitchRate = 0;
   private rollRate = 0;
   private yawRate = 0;
   private readonly rotation = new Euler(0, 0, 0, "YXZ");
   private readonly desiredVelocity = new Vector3();
 
-  constructor(readonly tuning: FlightTuning = bomberFlight) {
+  constructor(
+    readonly tuning: FlightTuning = bomberFlight,
+    readonly spawn: readonly number[] = [600, 2400, 4200],
+  ) {
     this.reset();
   }
   get altitude() {
@@ -88,7 +93,8 @@ export class FlightModel {
     return this.speed < 105;
   }
   reset() {
-    this.position.set(600, 2400, 4200);
+    this.position.set(this.spawn[0], this.spawn[1], this.spawn[2]);
+    this.boost = 1;
     this.velocity.set(0, 0, -this.tuning.startSpeed);
     this.speed = this.tuning.startSpeed;
     this.throttle = 0.64;
@@ -106,7 +112,12 @@ export class FlightModel {
   ) {
     if (this.crashed || dt <= 0) return;
     dt = Math.min(dt, 1 / 30);
-    this.throttle = clamp(this.throttle + input.throttle * dt * 0.16, 0, 1);
+    this.throttle = clamp(
+      this.throttle +
+        input.throttle * dt * 0.16 * (this.tuning.throttleResponse ?? 1),
+      0,
+      1,
+    );
     const authority = clamp(this.speed / 140, 0.35, 1);
     // Damped angular rates and gentle stability assistance retain the bomber's weight.
     this.pitchRate = damp(
@@ -147,10 +158,15 @@ export class FlightModel {
       wrap(this.yaw + this.yawRate * dt + Math.PI, Math.PI * 2) - Math.PI;
     const targetSpeed =
       this.tuning.baseSpeed +
-      this.throttle * this.tuning.thrust -
+      this.throttle * this.tuning.thrust * this.boost -
       Math.sin(this.pitch) * 58 -
       Math.abs(this.roll) * 7;
-    this.speed = damp(this.speed, targetSpeed, this.tuning.acceleration, dt);
+    this.speed = damp(
+      this.speed,
+      targetSpeed,
+      this.tuning.acceleration * this.boost,
+      dt,
+    );
     const stallSink = Math.max(0, 1 - this.speed / 105) * 90;
     if (this.stalled) this.pitch = damp(this.pitch, -0.14, 0.1, dt);
     if (this.altitude > 10500) this.pitch = damp(this.pitch, -0.06, 0.4, dt);

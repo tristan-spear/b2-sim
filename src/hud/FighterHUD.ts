@@ -1,12 +1,17 @@
 import type { PerspectiveCamera } from "three";
 import { CombatHUD } from "./CombatHUD";
 import type { FlightModel } from "../physics/FlightModel";
-import type { F35TrainingMission } from "../missions/F35TrainingMission";
+import type { CombatSystem } from "../combat/CombatSystem";
+import type { FighterWeapons } from "../combat/FighterWeapons";
+import type { FighterTargeting } from "../combat/FighterTargeting";
 
 export class FighterHUD extends CombatHUD {
   constructor(
     parent: HTMLElement,
-    private readonly fighter: F35TrainingMission,
+    private readonly fighter: CombatSystem & {
+      weapons: FighterWeapons;
+      targeting: FighterTargeting;
+    },
     action: (code: string) => void,
     reset: () => void,
   ) {
@@ -51,12 +56,17 @@ export class FighterHUD extends CombatHUD {
     const { targeting: t, weapons: w } = this.fighter;
     const status = !t.selected
       ? "SCAN"
-      : t.valid(flight.position)
-        ? "LOCKED"
-        : t.inCone
-          ? `ACQUIRING ${Math.round(t.progress * 100)}%`
-          : "TURN TO TARGET";
+      : flight.position.distanceTo(t.selected.position) >= t.range
+        ? "OUT OF RANGE"
+        : t.valid(flight.position)
+          ? "LOCKED"
+          : t.inCone
+            ? `ACQUIRING ${Math.round(t.progress * 100)}%`
+            : "TURN TO TARGET";
     this.root.querySelector("#lock-status")!.textContent = status;
+    this.root
+      .querySelector<HTMLElement>(".fighter-reticle")!
+      .style.setProperty("--lock-progress", `${t.progress * 360}deg`);
     this.root
       .querySelector<HTMLElement>(".fighter-reticle")!
       .classList.toggle("locked", t.valid(flight.position));
@@ -65,7 +75,7 @@ export class FighterHUD extends CombatHUD {
     );
     const target = t.selected;
     this.el("target-info").innerHTML = target
-      ? `<b>TARGET · ${target.id}</b><span>${(flight.position.distanceTo(target.position) / 1000).toFixed(1)} km · HEALTH ${target.health}%</span><strong>${status}</strong>`
+      ? `<b>TARGET · ${target.id}</b><span>${(flight.position.distanceTo(target.position) / 1000).toFixed(1)} km · HEALTH ${Math.round((target.health / target.maxHealth) * 100)}%</span><strong>${status}</strong>`
       : "NO AIR TARGET · TAB TO SELECT";
     const ground = w.groundTarget;
     this.root

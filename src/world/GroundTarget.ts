@@ -14,11 +14,12 @@ export class GroundTarget extends Damageable {
     kind: Exclude<TargetKind, "aircraft">,
     position: THREE.Vector3,
     readonly size: THREE.Vector3,
+    health?: number,
   ) {
     super(
       id,
       kind,
-      kind === "command" ? 200 : kind === "hangar" ? 150 : 100,
+      health ?? (kind === "command" ? 200 : kind === "hangar" ? 150 : 100),
       { small: 100, hangar: 250, radar: 300, command: 750 }[kind],
     );
     this.position.copy(position);

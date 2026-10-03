@@ -1,4 +1,5 @@
 import type { FlightModel } from "../physics/FlightModel";
+import type { CombatSound } from "../combat/WeaponManager";
 
 export class EngineAudio {
   enabled = false;
@@ -6,23 +7,31 @@ export class EngineAudio {
   private gain?: GainNode;
   private oscillator?: OscillatorNode;
   private filter?: BiquadFilterNode;
-  playCombat(kind: "bomb" | "missile" | "explosion" | "lock" | "cannon") {
+  playCombat(kind: CombatSound) {
     if (!this.enabled || !this.context) return;
     const context = this.context,
       now = context.currentTime;
     const gain = context.createGain();
     const duration =
-      kind === "cannon"
-        ? 0.045
-        : kind === "explosion"
-          ? 0.7
-          : kind === "missile"
-            ? 0.35
-            : 0.15;
+      kind === "boss" || kind === "complete" || kind === "failed"
+        ? 1.2
+        : kind === "cannon" || kind === "enemy"
+          ? 0.045
+          : kind === "explosion"
+            ? 0.7
+            : kind === "missile"
+              ? 0.35
+              : 0.15;
     gain.gain.setValueAtTime(kind === "explosion" ? 0.12 : 0.045, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     gain.connect(context.destination);
-    if (kind === "explosion" || kind === "missile" || kind === "cannon") {
+    if (
+      kind === "explosion" ||
+      kind === "missile" ||
+      kind === "cannon" ||
+      kind === "enemy" ||
+      kind === "damage"
+    ) {
       const buffer = context.createBuffer(
         1,
         Math.ceil(context.sampleRate * duration),
@@ -46,9 +55,26 @@ export class EngineAudio {
     } else {
       const source = context.createOscillator();
       source.type = "sine";
-      source.frequency.setValueAtTime(kind === "lock" ? 880 : 180, now);
+      source.frequency.setValueAtTime(
+        kind === "lock"
+          ? 880
+          : kind === "warning"
+            ? 660
+            : kind === "complete"
+              ? 440
+              : kind === "boss"
+                ? 95
+                : 180,
+        now,
+      );
       source.frequency.exponentialRampToValueAtTime(
-        kind === "lock" ? 1320 : 70,
+        kind === "lock"
+          ? 1320
+          : kind === "complete"
+            ? 880
+            : kind === "warning"
+              ? 440
+              : 70,
         now + duration,
       );
       source.connect(gain);

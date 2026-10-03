@@ -4,6 +4,7 @@ const controlledKeys = new Set([
   "Space",
   "KeyF",
   "KeyG",
+  "KeyB",
   "Tab",
   "KeyW",
   "KeyS",
@@ -27,12 +28,13 @@ export class FlightController {
   private readonly keys = new Set<string>();
   private readonly touch = new Set<string>();
   readonly input: FlightInput = neutralInput();
-  constructor(onAction: (code: string) => void) {
+  constructor(onAction: (code: string) => void, active = () => true) {
     const signal = this.lifecycle.signal;
     window.addEventListener(
       "keydown",
       (e) => {
         if (document.querySelector("dialog[open]")) return;
+        if (!active() && !["Escape", "KeyP", "KeyR"].includes(e.code)) return;
         if (
           e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLSelectElement

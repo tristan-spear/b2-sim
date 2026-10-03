@@ -1,5 +1,9 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
+if (process.argv.includes("--campaign")) {
+  await import("./campaign-check.mjs");
+  process.exit(0);
+}
 const browser = await chromium.launch({
   channel: "chrome",
   headless: true,
@@ -21,7 +25,7 @@ const hold = async (key, ms) => {
   await page.keyboard.up(key);
 };
 try {
-  await page.goto("http://localhost:5173/", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:5173/?training=1", { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__flightDebug !== undefined);
   assert.equal((await state()).state, "home");
   await page.screenshot({ path: "/tmp/spirit-menu.png" });
@@ -47,9 +51,10 @@ try {
     await page.keyboard.press("Escape");
     const frozen = await state();
     await page.keyboard.press("f");
-    await page.keyboard.press("Space");
+    await page.keyboard.press("w");
     await page.waitForTimeout(200);
     assert.deepEqual((await state()).position, frozen.position);
+    assert.deepEqual((await state()).cameraPosition, frozen.cameraPosition);
     assert.equal((await state()).combat.missiles, 6);
     await page.locator("#resume").click();
     await page.keyboard.press("f");
@@ -243,7 +248,7 @@ try {
     await page.keyboard.press("r");
     await page.keyboard.press("p");
     const pausedCombat = (await state()).combat;
-    await page.keyboard.press("Space");
+    await page.keyboard.press("w");
     await page.keyboard.press("f");
     await page.waitForTimeout(250);
     assert.deepEqual(
@@ -352,7 +357,7 @@ try {
       hasTouch: true,
       isMobile: true,
     });
-    await touchPage.goto("http://localhost:5173/", {
+    await touchPage.goto("http://localhost:5173/?training=1", {
       waitUntil: "networkidle",
     });
     await touchPage.waitForFunction(() => window.__flightDebug !== undefined);
@@ -422,8 +427,35 @@ try {
     assert.equal(paused.paused, true);
     await page.waitForTimeout(500);
     assert.deepEqual((await state()).position, paused.position);
-    await page.locator("#resume").click();
+    assert.deepEqual((await state()).cameraPosition, paused.cameraPosition);
+    assert.equal(
+      await page
+        .locator("#resume")
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await page
+        .locator("#reset")
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await page
+        .locator("#pause-overlay .return-home")
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Space");
     assert.equal((await state()).paused, false);
+    assert.equal(
+      (await state()).combat.bombs,
+      paused.combat.bombs,
+      "Space activates Resume without dropping a bomb",
+    );
     await page.locator("#help").click();
     assert.equal(
       await page.locator("#help-dialog").evaluate((el) => el.open),

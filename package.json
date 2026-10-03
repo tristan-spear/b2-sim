@@ -12,7 +12,11 @@
     "format": "prettier --write src tests scripts *.ts *.json index.html README.md",
     "test:combat": "node scripts/visual-check.mjs --combat",
     "test:fighter": "node scripts/visual-check.mjs --fighter",
-    "test:lifecycle": "node scripts/visual-check.mjs --lifecycle"
+    "test:lifecycle": "node scripts/visual-check.mjs --lifecycle",
+    "test:campaign": "node scripts/visual-check.mjs --campaign --campaign-smoke",
+    "test:campaign-play": "node scripts/visual-check.mjs --campaign --campaign-play",
+    "test:campaign-lifecycle": "node scripts/visual-check.mjs --campaign --campaign-lifecycle",
+    "test:campaign-boss": "node scripts/visual-check.mjs --campaign --campaign-boss"
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "^5.3.0",

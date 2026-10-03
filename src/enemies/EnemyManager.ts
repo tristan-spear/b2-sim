@@ -8,7 +8,7 @@ export class EnemyManager {
       (_, i) => new EnemyAircraft(i),
     ),
   ) {
-    this.root.add(...this.aircraft.map((a) => a.root));
+    this.aircraft.forEach((a) => this.root.add(a.root));
   }
   update(dt: number) {
     this.aircraft.forEach((a) => a.update(dt));

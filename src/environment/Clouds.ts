@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { random } from "../utils/math";
+import type { EnvironmentConfig } from "../campaign/types";
 
 interface Cloud {
   x: number;
@@ -59,6 +60,18 @@ export class Clouds {
         height: 260 + this.rng() * 550,
         rotation: (this.rng() - 0.5) * 0.14,
       });
+  }
+  configure(config: EnvironmentConfig) {
+    this.mesh.count = Math.round(200 * config.clouds);
+    const material = this.mesh.material as THREE.MeshBasicMaterial;
+    material.color.set(
+      config.time === "night"
+        ? "#526786"
+        : config.time === "storm"
+          ? "#718293"
+          : "#ffffff",
+    );
+    material.opacity = config.time === "storm" ? 0.85 : 0.57;
   }
   update(camera: THREE.Camera, position: THREE.Vector3, time: number) {
     this.clouds.forEach((cloud, i) => {

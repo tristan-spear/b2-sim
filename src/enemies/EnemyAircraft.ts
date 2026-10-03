@@ -12,8 +12,16 @@ export class EnemyAircraft extends Damageable {
   });
   private phase = 0;
   private respawnTime = 0;
-  constructor(readonly index: number) {
-    super(`BANDIT 0${index + 1}`, "aircraft", 100, 500);
+  constructor(
+    readonly index: number,
+    config?: { id: string; health?: number },
+  ) {
+    super(
+      config?.id ?? `BANDIT 0${index + 1}`,
+      "aircraft",
+      config?.health ?? 100,
+      500,
+    );
     const body = new THREE.Mesh(
       new THREE.ConeGeometry(3.5, 25, 6),
       this.material,

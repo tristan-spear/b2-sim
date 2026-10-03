@@ -222,6 +222,21 @@ export class ExplosionSystem {
       "trail",
     );
   }
+  sparks(position: THREE.Vector3) {
+    for (let i = 0; i < 5; i++)
+      this.particle(
+        position,
+        new THREE.Vector3(
+          (Math.random() - 0.5) * 60,
+          Math.random() * 45,
+          (Math.random() - 0.5) * 60,
+        ),
+        "#ffc86b",
+        0.35,
+        1.3,
+        "spark",
+      );
+  }
   smoke(position: THREE.Vector3) {
     this.particle(
       position,

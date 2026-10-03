@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { fbm, terrainHeight } from "../utils/noise";
+import { setTerrainPreset } from "../utils/noise";
+import type { TerrainType } from "../campaign/types";
 
 const TILE = 6000;
 interface Tile {
@@ -9,6 +11,24 @@ interface Tile {
   resolution: number;
 }
 export class Terrain {
+  private preset: TerrainType = "legacy";
+  configure(preset: TerrainType, position: THREE.Vector3) {
+    this.preset = preset;
+    setTerrainPreset(preset);
+    for (const tile of this.tiles.values()) {
+      tile.mesh.geometry.dispose();
+      tile.mesh.children.forEach((child) =>
+        (child as THREE.Mesh).geometry.dispose(),
+      );
+      tile.mesh.removeFromParent();
+    }
+    this.tiles.clear();
+    this.centerX = this.centerZ = Infinity;
+    (this.water.material as THREE.MeshStandardMaterial).color.set(
+      preset === "islands" || preset === "coastline" ? "#31576b" : "#718e88",
+    );
+    this.update(position, true);
+  }
   readonly root = new THREE.Group();
   private readonly tiles = new Map<string, Tile>();
   private readonly material: THREE.MeshStandardMaterial;
@@ -80,6 +100,18 @@ export class Terrain {
       high = new THREE.Color("#a29a85"),
       snow = new THREE.Color("#cbc8b3"),
       color = new THREE.Color();
+    const palette: Partial<Record<TerrainType, string[]>> = {
+      desert: ["#b99159", "#bc9467", "#977351", "#d1b185"],
+      canyon: ["#9b6545", "#b2744c", "#8b563f", "#d7a277"],
+      forest: ["#315b39", "#597342", "#6d7656", "#a5b08e"],
+      city: ["#35474b", "#4f5b59", "#616765", "#828d85"],
+      snow: ["#a1b6c2", "#c5d3dd", "#e7e9ec", "#f5f6f6"],
+      islands: ["#54816b", "#67816d", "#868675", "#c1b99a"],
+      coastline: ["#817657", "#71745d", "#b09879", "#cbc4ad"],
+    };
+    const colorsForPreset = palette[this.preset];
+    if (colorsForPreset)
+      [low, mid, high, snow].forEach((c, i) => c.set(colorsForPreset[i]));
     for (let i = 0; i < position.count; i++) {
       const wx = position.getX(i) + x * TILE,
         wz = position.getZ(i) + z * TILE;

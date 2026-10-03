@@ -1997,6 +1997,25 @@ dialog::backdrop {
     background 0.2s,
     box-shadow 0.2s;
 }
+.mission-choice {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #a4b4b8;
+  font: 10px var(--mono);
+}
+.mission-choice select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #8cacb450;
+  color: #d3e4af;
+  background: #12232b;
+  font: inherit;
+}
+.launch-panel #launch-error {
+  color: #ffbe9b;
+  min-height: 0;
+}
 .start-button span {
   font-size: 24px;
   line-height: 20px;
@@ -2107,6 +2126,13 @@ dialog::backdrop {
   content: "";
   position: absolute;
   background: #bcebdd;
+}
+.fighter-reticle > i {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(#e7ef90 var(--lock-progress, 0deg), transparent 0);
+  mask: radial-gradient(circle, transparent 65%, #000 67%);
 }
 .fighter-reticle::before {
   width: 18px;
@@ -2288,6 +2314,323 @@ dialog::backdrop {
 
 .scene.mission-enter {
   animation: mission-enter 0.65s ease;
+}
+.campaign-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  overflow: auto;
+  background: linear-gradient(135deg, #0b171ff5, #142a2bf7);
+  padding: 32px 4vw;
+}
+.campaign-header {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  border-bottom: 1px solid #aecac526;
+  padding-bottom: 24px;
+}
+.campaign-header h1 {
+  font:
+    40px "Barlow Condensed",
+    sans-serif;
+  margin: 8px 0 0;
+}
+.credit-balance {
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--mono);
+}
+.credit-balance small {
+  display: block;
+  font-size: 9px;
+  color: #91abae;
+  letter-spacing: 2px;
+}
+.credit-balance b {
+  display: block;
+  margin-top: 8px;
+  color: #d3e4af;
+  font-size: 25px;
+}
+.credit-balance b span {
+  font-size: 12px;
+}
+.campaign-heading {
+  margin: 24px 0;
+}
+.campaign-heading h2,
+.sortie-brief h2 {
+  font:
+    38px "Barlow Condensed",
+    sans-serif;
+  margin: 0 0 10px;
+}
+.campaign-heading p,
+.sortie-brief p {
+  color: #9cb5b8;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.mission-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+.mission-card {
+  text-align: left;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #a6c5c52c;
+  background: #162930;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
+}
+.mission-card:hover:not(:disabled) {
+  transform: translateY(-5px);
+  border-color: #d3e4af;
+}
+.mission-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mission-art {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  height: 150px;
+  padding: 17px;
+  background: linear-gradient(
+    155deg,
+    #354c62 10%,
+    #a3bc9d60 55%,
+    #34494d 56%,
+    #162930
+  );
+}
+.terrain-desert .mission-art,
+.terrain-canyon .mission-art {
+  background: linear-gradient(
+    155deg,
+    #b06f39,
+    #e0b47766 50%,
+    #825139 51%,
+    #382f2b
+  );
+}
+.terrain-snow .mission-art {
+  background: linear-gradient(
+    135deg,
+    #374b68,
+    #b6c9dc 50%,
+    #536677 51%,
+    #192530
+  );
+}
+.terrain-city .mission-art {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 18px, #142531 18px 30px),
+    linear-gradient(#18253e, #bc7856);
+}
+.terrain-islands .mission-art,
+.terrain-coastline .mission-art {
+  background: linear-gradient(
+    165deg,
+    #795c80,
+    #eaa58170 49%,
+    #345e67 50%,
+    #1a303f
+  );
+}
+.mission-art span {
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+}
+.mission-art b {
+  font: 36px "Barlow Condensed";
+  color: #e0edba;
+}
+.mission-card-body {
+  padding: 18px;
+}
+.mission-card-body > small {
+  color: #90b0b5;
+  text-transform: uppercase;
+  font: 8px var(--mono);
+  line-height: 1.7;
+}
+.mission-card h3 {
+  font: 29px "Barlow Condensed";
+  margin: 12px 0;
+}
+.difficulty {
+  color: #cddcaa;
+  font-size: 12px;
+  letter-spacing: 3px;
+}
+.mission-card p {
+  color: #acbec0;
+  font-size: 11px;
+  line-height: 1.8;
+  min-height: 140px;
+}
+.mission-record {
+  border-top: 1px solid #9dbbbb25;
+  padding-top: 12px;
+  display: grid;
+  gap: 9px;
+}
+.mission-record span {
+  display: flex;
+  justify-content: space-between;
+  font: 8px var(--mono);
+  color: #839fa6;
+}
+.mission-record b {
+  color: #d4e4d7;
+}
+.mission-card strong {
+  display: block;
+  margin-top: 22px;
+  color: #d3e4af;
+  font: 8px var(--mono);
+  line-height: 1.8;
+}
+.campaign-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  font: 9px var(--mono);
+  color: #77959a;
+}
+.campaign-footer button {
+  font-size: 9px;
+  color: #93a4a8;
+}
+.loadout-layout {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 40px;
+}
+.sortie-brief {
+  padding-top: 32px;
+}
+.sortie-brief h2 {
+  margin-top: 16px;
+}
+.sortie-brief ul {
+  padding-left: 18px;
+  color: #b4c8bf;
+  font-size: 12px;
+  line-height: 2;
+}
+.loadout-stats {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+  padding: 20px 0;
+  border-block: 1px solid #9dbbbb25;
+}
+.loadout-stats span {
+  display: flex;
+  justify-content: space-between;
+  font: 10px var(--mono);
+  color: #90b0b5;
+}
+.loadout-stats b {
+  color: #d3e4af;
+}
+.sortie-brief .loadout-tip {
+  font-size: 10px;
+  margin: 20px 0;
+}
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.upgrade-card {
+  background: #1b303780;
+  border: 1px solid #9dbbbb25;
+  padding: 18px;
+}
+.upgrade-card h3 {
+  font: 23px "Barlow Condensed";
+  margin: 0 0 8px;
+}
+.upgrade-level {
+  color: #d3e4af;
+  font: 10px var(--mono);
+}
+.upgrade-card p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #9cb5b8;
+  min-height: 40px;
+}
+.upgrade-card button {
+  width: 100%;
+  padding: 12px 6px;
+  background: #d3e4af;
+  color: #17261e;
+  border: 1px solid #d3e4af;
+  font: 9px var(--mono);
+}
+.upgrade-card button:disabled {
+  background: transparent;
+  color: #748b8e;
+  border-color: #9dbbbb25;
+  cursor: not-allowed;
+}
+.save-warning {
+  color: #efbc87;
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .mission-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .upgrade-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .campaign-screen {
+    padding: 20px;
+  }
+  .campaign-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .campaign-header h1 {
+    font-size: 28px;
+  }
+  .credit-balance {
+    text-align: left;
+    margin-left: 0;
+  }
+  .mission-cards {
+    grid-template-columns: 1fr;
+  }
+  .mission-card p {
+    min-height: 0;
+  }
+  .mission-art {
+    height: 90px;
+  }
+  .loadout-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .upgrade-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .campaign-footer {
+    flex-wrap: wrap;
+    line-height: 2;
+  }
 }
 @keyframes mission-enter {
   from {
